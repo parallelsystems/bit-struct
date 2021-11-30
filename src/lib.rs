@@ -99,28 +99,6 @@ impl<
 }
 
 /// Create a bit struct. Look at tests folder to see examples.
-/// ```
-/// bit_struct::enums!(
-///     /// Mode
-///     Mode { Zero, One }
-/// );
-///
-/// bit_struct::bit_struct!(
-///     struct Abc(u16){
-///         mode(15,15): Mode,
-///         count(1,5): u8,
-///     }
-///
-///     struct FullCount(u16){
-///         count(0,15): u16,
-///     }
-///
-///     struct TooManyBits(u16) {
-///         count(0,15): u8
-///     }
-///
-/// );
-/// ```
 #[macro_export]
 macro_rules! bit_struct {
     (
@@ -140,51 +118,35 @@ macro_rules! bit_struct {
             }
             )*
         }
+
+        impl Default for $name {
+            fn default() -> Self {
+                let mut res = Self(0);
+                $(
+                    res.$field().set(Default::default());
+                )*
+                res
+            }
+        }
         )*
     };
 }
 
-/// Create enums which have convenient TryFrom/From implementations. This makes using them with
-/// the [bit_struct] macro much easier.
-/// ```
-/// bit_struct::enums!(
-///     /// Mode
-///     Mode { Zero, One }
-/// );
-///
-/// bit_struct::bit_struct!(
-///     struct Abc(u16){
-///         mode(15,15): Mode,
-///         count(1,5): u8,
-///     }
-///
-///     struct FullCount(u16){
-///         count(0,15): u16,
-///     }
-///
-///     struct TooManyBits(u16) {
-///         count(0,15): u8
-///     }
-///
-/// );
-/// ```
+/// Not meant to be directly used
 #[macro_export]
-macro_rules! enums {
+macro_rules! enum_impl {
     (
-        $(
-            $(#[doc = $struct_doc:expr])*
-            $(#[derive($($struct_der:ident),+)])?
-            $enum_vis: vis $name: ident {
-                $(#[doc = $fst_field_doc:expr])*
-                $fst_field: ident
-                $(,
-                    $(#[doc = $field_doc:expr])*
-                    $field: ident
-                )* $(,)?
-            }
-        )*
+        $(#[doc = $struct_doc:expr])*
+        $(#[derive($($struct_der:ident),+)])?
+        $enum_vis: vis $name: ident($default: ident){
+            $(#[doc = $fst_field_doc:expr])*
+            $fst_field: ident
+            $(,
+                $(#[doc = $field_doc:expr])*
+                $field: ident
+            )* $(,)?
+        }
     ) => {
-        $(
 
         #[repr(u8)]
         $(#[doc = $struct_doc])*
@@ -197,6 +159,12 @@ macro_rules! enums {
                 $(#[doc = $field_doc])*
                 $field
             ),*
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                $name::$default
+            }
         }
 
         impl TryFrom<u8> for $name {
@@ -278,7 +246,153 @@ macro_rules! enums {
             }
         }
 
-        )*
 
     };
+
+
+    (
+        $(#[doc = $struct_doc:expr])*
+        $(#[derive($($struct_der:ident),+)])?
+        $enum_vis: vis $name: ident {
+            $(#[doc = $fst_field_doc:expr])*
+            $fst_field: ident
+            $(,
+                $(#[doc = $field_doc:expr])*
+                $field: ident
+            )* $(,)?
+        }
+    ) => {
+        #[repr(u8)]
+        $(#[doc = $struct_doc])*
+        $(#[derive($($struct_der),+)])?
+        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
+        $enum_vis enum $name {
+            $(#[doc = $fst_field_doc])*
+            $fst_field,
+            $(
+                $(#[doc = $field_doc])*
+                $field
+            ),*
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                $name::$fst_field
+            }
+        }
+
+        impl TryFrom<u8> for $name {
+
+            type Error = ();
+
+            fn try_from(value: u8) -> Result<$name, Self::Error> {
+                let variants = [$name::$fst_field, $($name::$field),*];
+                if (value as usize) < variants.len() {
+                    Ok(variants[value as usize])
+                } else {
+                    Err(())
+                }
+            }
+        }
+
+        impl TryFrom<u16> for $name {
+
+            type Error = ();
+
+            fn try_from(value: u16) -> Result<$name, Self::Error> {
+                $name::try_from(value as u8)
+            }
+        }
+
+        impl TryFrom<u32> for $name {
+
+            type Error = ();
+
+            fn try_from(value: u32) -> Result<$name, Self::Error> {
+                $name::try_from(value as u8)
+            }
+        }
+
+        impl TryFrom<u64> for $name {
+
+            type Error = ();
+
+            fn try_from(value: u64) -> Result<$name, Self::Error> {
+                $name::try_from(value as u8)
+            }
+        }
+
+        impl TryFrom<u128> for $name {
+
+            type Error = ();
+
+            fn try_from(value: u128) -> Result<$name, Self::Error> {
+                $name::try_from(value as u8)
+            }
+        }
+
+        impl From<$name> for u8 {
+            fn from(value: $name) -> u8 {
+                value as u8
+            }
+        }
+
+        impl From<$name> for u16 {
+            fn from(value: $name) -> u16 {
+                (value as u8) as u16
+            }
+        }
+
+        impl From<$name> for u32 {
+            fn from(value: $name) -> u32 {
+                (value as u8) as u32
+            }
+        }
+        impl From<$name> for u64 {
+            fn from(value: $name) -> u64 {
+                (value as u8) as u64
+            }
+        }
+
+        impl From<$name> for u128 {
+            fn from(value: $name) -> u128 {
+                (value as u8) as u128
+            }
+        }
+    };
+}
+
+/// Create enums which have convenient TryFrom/From implementations. This makes using them with
+/// the [bit_struct] macro much easier.
+#[macro_export]
+macro_rules! enums {
+    (
+        $(
+        $(#[doc = $struct_doc:expr])*
+        $(#[derive($($struct_der:ident),+)])?
+        $enum_vis: vis $name: ident $(($enum_default: ident))? {
+            $(#[doc = $fst_field_doc:expr])*
+            $fst_field: ident
+            $(,
+                $(#[doc = $field_doc:expr])*
+                $field: ident
+            )* $(,)?
+        }
+        )+
+    ) => {
+        $(
+        enum_impl!(
+        $(#[doc = $struct_doc])*
+        $(#[derive($($struct_der),+)])?
+        $enum_vis $name $(($enum_default))?{
+            $(#[doc = $fst_field_doc])*
+            $fst_field
+            $(,
+                $(#[doc = $field_doc])*
+                $field
+            )*
+        }
+        );
+        )+
+    }
 }

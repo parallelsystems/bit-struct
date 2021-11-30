@@ -1,8 +1,8 @@
-use bit_struct::{bit_struct, enums};
+use bit_struct::{bit_struct, enum_impl, enums};
 
 enums!(
-    /// Mode
     Mode { Zero, One }
+    ModeTwo(One) { Zero, One }
 );
 
 bit_struct!(
@@ -20,6 +20,12 @@ bit_struct!(
     }
 
 );
+
+#[test]
+fn test_defaults() {
+    assert_eq!(Mode::default(), Mode::Zero);
+    assert_eq!(ModeTwo::default(), ModeTwo::One);
+}
 
 #[test]
 fn test_abc() {
