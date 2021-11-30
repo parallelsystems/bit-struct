@@ -100,18 +100,12 @@ impl<
 
 /// Create a bit struct. Look at tests folder to see examples.
 /// ```
-/// enums!(
+/// bit_struct::enums!(
 ///     /// Mode
-///     #[derive(Debug, PartialOrd, PartialEq)]
-///     enum Mode {
-///         /// zero
-///         Zero = 0b0,
-///         /// one
-///         One = 0b1,
-///     }
+///     Mode { Zero, One }
 /// );
 ///
-/// bit_struct!(
+/// bit_struct::bit_struct!(
 ///     struct Abc(u16){
 ///         mode(15,15): Mode,
 ///         count(1,5): u8,
@@ -153,18 +147,12 @@ macro_rules! bit_struct {
 /// Create enums which have convenient TryFrom/From implementations. This makes using them with
 /// the [bit_struct] macro much easier.
 /// ```
-/// enums!(
+/// bit_struct::enums!(
 ///     /// Mode
-///     #[derive(Debug, PartialOrd, PartialEq)]
-///     enum Mode {
-///         /// zero
-///         Zero = 0b0,
-///         /// one
-///         One = 0b1,
-///     }
+///     Mode { Zero, One }
 /// );
 ///
-/// bit_struct!(
+/// bit_struct::bit_struct!(
 ///     struct Abc(u16){
 ///         mode(15,15): Mode,
 ///         count(1,5): u8,
@@ -186,11 +174,13 @@ macro_rules! enums {
         $(
             $(#[doc = $struct_doc:expr])*
             $(#[derive($($struct_der:ident),+)])?
-            $enum_vis: vis enum $name: ident {
-                $(
+            $enum_vis: vis $name: ident {
+                $(#[doc = $fst_field_doc:expr])*
+                $fst_field: ident
+                $(,
                     $(#[doc = $field_doc:expr])*
-                    $field: ident = $value: literal
-                ),* $(,)?
+                    $field: ident
+                )* $(,)?
             }
         )*
     ) => {
@@ -199,10 +189,13 @@ macro_rules! enums {
         #[repr(u8)]
         $(#[doc = $struct_doc])*
         $(#[derive($($struct_der),+)])?
+        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
         $enum_vis enum $name {
+            $(#[doc = $fst_field_doc])*
+            $fst_field,
             $(
                 $(#[doc = $field_doc])*
-                $field = $value
+                $field
             ),*
         }
 
@@ -211,9 +204,11 @@ macro_rules! enums {
             type Error = ();
 
             fn try_from(value: u8) -> Result<$name, Self::Error> {
-                match value {
-                    $($value => Ok($name::$field)),*,
-                    _ => Err(())
+                let variants = [$name::$fst_field, $($name::$field),*];
+                if (value as usize) < variants.len() {
+                    Ok(variants[value as usize])
+                } else {
+                    Err(())
                 }
             }
         }

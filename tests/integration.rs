@@ -2,13 +2,7 @@ use bit_struct::{bit_struct, enums};
 
 enums!(
     /// Mode
-    #[derive(Debug, PartialOrd, PartialEq)]
-    enum Mode {
-        /// zero
-        Zero = 0b0,
-        /// one
-        One = 0b1,
-    }
+    Mode { Zero, One }
 );
 
 bit_struct!(
