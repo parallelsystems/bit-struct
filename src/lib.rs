@@ -101,8 +101,6 @@ impl<
 #[macro_export]
 macro_rules! bit_struct_impl {
     (
-        $(
-
         $(#[doc = $struct_doc:expr])*
         #[derive(Default)]
         $struct_vis: vis struct $name: ident ($kind: ty) {
@@ -111,7 +109,6 @@ macro_rules! bit_struct_impl {
             $field: ident($start: literal, $end: literal): $actual: ty
         ),* $(,)?
         }
-        )*
     ) => {
         $(#[doc = $struct_doc])*
         #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
@@ -133,38 +130,7 @@ macro_rules! bit_struct_impl {
             }
             )*
         }
-    };
 
-    (
-        $(#[doc = $struct_doc:expr])*
-        $struct_vis: vis struct $name: ident ($kind: ty) {
-        $(
-            $(#[doc = $field_doc:expr])*
-            $field: ident($start: literal, $end: literal): $actual: ty
-        ),* $(,)?
-        }
-    ) => {
-
-        $(#[doc = $struct_doc])*
-        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
-        $struct_vis struct $name($kind);
-
-        impl $name {
-            pub fn new($($field: $actual),*) -> Self {
-                let mut res = Self(0);
-                $(
-                    res.$field().set($field);
-                )*
-                res
-            }
-
-            $(
-            $(#[doc=$field_doc])*
-            pub fn $field(&mut self) -> bit_struct::GetSet<'_, $kind, $actual, $start, $end>{
-                bit_struct::GetSet::new(&mut self.0)
-            }
-            )*
-        }
 
         impl Default for $name {
             fn default() -> Self {
@@ -175,6 +141,39 @@ macro_rules! bit_struct_impl {
                 res
             }
         }
+
+    };
+
+    (
+        $(#[doc = $struct_doc:expr])*
+        $struct_vis: vis struct $name: ident ($kind: ty) {
+        $(
+            $(#[doc = $field_doc:expr])*
+            $field: ident($start: literal, $end: literal): $actual: ty
+        ),* $(,)?
+        }
+    ) => {
+
+        $(#[doc = $struct_doc])*
+        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
+        $struct_vis struct $name($kind);
+
+        impl $name {
+            pub fn new($($field: $actual),*) -> Self {
+                let mut res = Self(0);
+                $(
+                    res.$field().set($field);
+                )*
+                res
+            }
+
+            $(
+            $(#[doc=$field_doc])*
+            pub fn $field(&mut self) -> bit_struct::GetSet<'_, $kind, $actual, $start, $end>{
+                bit_struct::GetSet::new(&mut self.0)
+            }
+            )*
+        }
     };
 }
 
@@ -184,7 +183,7 @@ macro_rules! bit_struct {
     (
         $(
         $(#[doc = $struct_doc:expr])*
-        $(#[derive($($struct_der: expr),+)])?
+        $(#[derive($($struct_der: ident),+)])?
         $struct_vis: vis struct $name: ident ($kind: ty) {
         $(
             $(#[doc = $field_doc:expr])*

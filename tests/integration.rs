@@ -7,6 +7,7 @@ enums!(
 
 bit_struct!(
     /// Abc struct
+    #[derive(Default)]
     struct Abc(u16){
         /// Gets the mode
         mode(15,15): Mode,
@@ -23,10 +24,23 @@ bit_struct!(
 
 );
 
+impl Default for TooManyBits {
+    fn default() -> Self {
+        TooManyBits::new(12)
+    }
+}
+
 #[test]
 fn test_defaults() {
     assert_eq!(Mode::default(), Mode::Zero);
     assert_eq!(ModeTwo::default(), ModeTwo::One);
+
+    let mut abc_default = Abc::default();
+    assert_eq!(abc_default.mode().get(), Ok(Mode::Zero));
+    assert_eq!(abc_default.count().get(), Ok(0));
+
+    let mut too_many_bits_default = TooManyBits::default();
+    assert_eq!(too_many_bits_default.count().get(), Ok(12))
 }
 
 #[test]
