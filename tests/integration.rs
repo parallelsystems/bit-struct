@@ -6,7 +6,9 @@ enums!(
 );
 
 bit_struct!(
+    /// Abc struct
     struct Abc(u16){
+        /// Gets the mode
         mode(15,15): Mode,
         count(1,5): u8,
     }

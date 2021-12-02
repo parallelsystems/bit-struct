@@ -103,18 +103,25 @@ impl<
 macro_rules! bit_struct {
     (
         $(
+
+        $(#[doc = $struct_doc:expr])*
         $struct_vis: vis struct $name: ident ($kind: ty) {
-        $($field: ident($start: literal, $end: literal): $actual: ty),* $(,)?
+        $(
+            $(#[doc = $field_doc:expr])*
+            $field: ident($start: literal, $end: literal): $actual: ty
+        ),* $(,)?
         }
         )*
     ) => {
         $(
 
+        $(#[doc = $struct_doc])*
         #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
         $struct_vis struct $name($kind);
 
         impl $name {
             $(
+            $(#[doc=$field_doc])*
             pub fn $field(&mut self) -> bit_struct::GetSet<'_, $kind, $actual, $start, $end>{
                 bit_struct::GetSet::new(&mut self.0)
             }
