@@ -109,6 +109,8 @@ macro_rules! bit_struct {
         )*
     ) => {
         $(
+
+        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
         $struct_vis struct $name($kind);
 
         impl $name {
