@@ -31,6 +31,7 @@ fn test_defaults() {
 
 #[test]
 fn test_abc() {
+
     let mut abc = Abc(0);
 
     assert_eq!(abc.mode().get(), Ok(Mode::Zero));
@@ -58,4 +59,11 @@ fn test_too_many_bits() {
 
     too_many.count().set(u8::MAX);
     assert_eq!(too_many.count().get(), Ok(u8::MAX));
+}
+
+#[test]
+fn test_constructor() {
+    let mut abc = Abc::new(Mode::Zero, 12);
+    assert_eq!(abc.mode().get(), Ok(Mode::Zero));
+    assert_eq!(abc.count().get(), Ok(12));
 }

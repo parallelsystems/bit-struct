@@ -98,13 +98,13 @@ impl<
     }
 }
 
-/// Create a bit struct. Look at tests folder to see examples.
 #[macro_export]
-macro_rules! bit_struct {
+macro_rules! bit_struct_impl {
     (
         $(
 
         $(#[doc = $struct_doc:expr])*
+        #[derive(Default)]
         $struct_vis: vis struct $name: ident ($kind: ty) {
         $(
             $(#[doc = $field_doc:expr])*
@@ -113,13 +113,51 @@ macro_rules! bit_struct {
         }
         )*
     ) => {
+        $(#[doc = $struct_doc])*
+        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
+        $struct_vis struct $name($kind);
+
+        impl $name {
+
+            pub fn new($($field: $actual),*) -> Self {
+                let mut res = Self(0);
+                $(
+                    res.$field().set($field);
+                )*
+                res
+            }
+            $(
+            $(#[doc=$field_doc])*
+            pub fn $field(&mut self) -> bit_struct::GetSet<'_, $kind, $actual, $start, $end>{
+                bit_struct::GetSet::new(&mut self.0)
+            }
+            )*
+        }
+    };
+
+    (
+        $(#[doc = $struct_doc:expr])*
+        $struct_vis: vis struct $name: ident ($kind: ty) {
         $(
+            $(#[doc = $field_doc:expr])*
+            $field: ident($start: literal, $end: literal): $actual: ty
+        ),* $(,)?
+        }
+    ) => {
 
         $(#[doc = $struct_doc])*
         #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
         $struct_vis struct $name($kind);
 
         impl $name {
+            pub fn new($($field: $actual),*) -> Self {
+                let mut res = Self(0);
+                $(
+                    res.$field().set($field);
+                )*
+                res
+            }
+
             $(
             $(#[doc=$field_doc])*
             pub fn $field(&mut self) -> bit_struct::GetSet<'_, $kind, $actual, $start, $end>{
@@ -137,6 +175,36 @@ macro_rules! bit_struct {
                 res
             }
         }
+    };
+}
+
+/// Create a bit struct. Look at tests folder to see examples.
+#[macro_export]
+macro_rules! bit_struct {
+    (
+        $(
+        $(#[doc = $struct_doc:expr])*
+        $(#[derive($($struct_der: expr),+)])?
+        $struct_vis: vis struct $name: ident ($kind: ty) {
+        $(
+            $(#[doc = $field_doc:expr])*
+            $field: ident($start: literal, $end: literal): $actual: ty
+        ),* $(,)?
+        }
+        )*
+    ) => {
+        $(
+        bit_struct::bit_struct_impl!(
+        $(#[doc = $struct_doc])*
+        $(#[derive($($struct_der),+)])?
+        $struct_vis struct $name ($kind) {
+        $(
+            $(#[doc = $field_doc])*
+            $field($start, $end): $actual
+        ),*
+        }
+
+        );
         )*
     };
 }
