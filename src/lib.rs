@@ -61,10 +61,14 @@ impl<
 {
     /// Get the property. Returns an error it does not exist.
     pub fn get(&self) -> Result<T, T::Error> {
+        let section = self.get_raw();
+        T::try_from(section)
+    }
+
+    pub fn get_raw(&self) -> P {
         let parent = *self.parent;
         let mask = self.mask();
-        let section = (parent >> START) & mask;
-        T::try_from(section)
+        (parent >> START) & mask
     }
 }
 
@@ -86,6 +90,10 @@ impl<
 {
     /// Set the property
     pub fn set(&mut self, value: T) {
+        self.set_raw(value.into());
+    }
+
+    pub fn set_raw(&mut self, value: P) {
         let mask = self.mask();
         let mask_shifted = mask << START;
 
@@ -93,7 +101,7 @@ impl<
         *self.parent |= mask_shifted;
         *self.parent ^= mask_shifted;
 
-        let to_set = value.into() & mask;
+        let to_set = value & mask;
         *self.parent |= to_set << START;
     }
 }
