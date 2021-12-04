@@ -31,6 +31,13 @@ impl Default for TooManyBits {
 }
 
 #[test]
+fn test_debugs() {
+    let mode = Abc::new(Mode::Zero, 12);
+    let formatted = format!("{:?}", mode);
+    assert_eq!(formatted, "Abc { raw: 24, mode: Ok(Zero), count: Ok(12) }")
+}
+
+#[test]
 fn test_defaults() {
     assert_eq!(Mode::default(), Mode::Zero);
     assert_eq!(ModeTwo::default(), ModeTwo::One);
@@ -45,7 +52,6 @@ fn test_defaults() {
 
 #[test]
 fn test_abc() {
-
     let mut abc = Abc(0);
 
     assert_eq!(abc.mode().get(), Ok(Mode::Zero));

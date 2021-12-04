@@ -98,6 +98,7 @@ impl<
     }
 }
 
+/// Helper macro
 #[macro_export]
 macro_rules! bit_struct_impl {
     (
@@ -110,27 +111,17 @@ macro_rules! bit_struct_impl {
         ),* $(,)?
         }
     ) => {
+
+        bit_struct::bit_struct_impl!(
         $(#[doc = $struct_doc])*
-        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
-        $struct_vis struct $name($kind);
-
-        impl $name {
-
-            pub fn new($($field: $actual),*) -> Self {
-                let mut res = Self(0);
-                $(
-                    res.$field().set($field);
-                )*
-                res
-            }
-            $(
-            $(#[doc=$field_doc])*
-            pub fn $field(&mut self) -> bit_struct::GetSet<'_, $kind, $actual, $start, $end>{
-                bit_struct::GetSet::new(&mut self.0)
-            }
-            )*
+        $struct_vis struct $name ($kind) {
+        $(
+            $(#[doc = $field_doc])*
+            $field($start, $end): $actual
+        ),*
         }
 
+        );
 
         impl Default for $name {
             fn default() -> Self {
@@ -155,8 +146,20 @@ macro_rules! bit_struct_impl {
     ) => {
 
         $(#[doc = $struct_doc])*
-        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
+        #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord)]
         $struct_vis struct $name($kind);
+
+        impl ::core::fmt::Debug for $name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> core::fmt::Result {
+                let mut copied = *self;
+                f.debug_struct(stringify!($name))
+                    .field("raw", &copied.0)
+                    $(
+                        .field(stringify!($field), &copied.$field().get())
+                    )*
+                    .finish()
+            }
+        }
 
         impl $name {
             pub fn new($($field: $actual),*) -> Self {
