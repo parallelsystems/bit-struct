@@ -2,6 +2,7 @@
 
 #![no_std]
 
+use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
 use core::ops::{BitAnd, BitOrAssign, BitXorAssign, Shl, ShlAssign, Shr, ShrAssign};
 use num_traits::{Bounded, Num};
@@ -13,6 +14,127 @@ pub struct GetSet<'a, P, T, const START: usize, const STOP: usize> {
     /// The type in the get/set operations
     _phantom: PhantomData<T>,
 }
+
+impl<'a, P, T, const START: usize, const STOP: usize> GetSet<'a, P, T, START, STOP> {
+    pub fn start(&self) -> usize {
+        START
+    }
+
+    pub fn stop(&self) -> usize {
+        STOP
+    }
+}
+
+/// A trait which defines how many bits are needed to store a struct.
+///
+/// # Safety
+/// Define `Num` as `{i,u}{8,16,32,64,128}`.
+/// - when calling `core::mem::transmute` on `Self`, only bits [0, COUNT) can be non-zero
+/// - TryFrom<Num> produces Some(x) <=> core::mem::transmute(num) produces a valid Self(x)
+/// - TryFrom<Num> produces None <=> core::mem::transmute(num) produces an invalid state for Self
+pub unsafe trait BitCount {
+    const COUNT: usize;
+}
+
+macro_rules! bit_counts {
+    ($($num: ty = $count: literal),*) => {
+        $(
+        unsafe impl BitCount for $num {
+            const COUNT: usize = $count;
+        }
+        )*
+    };
+}
+
+bit_counts!(u8 = 8, u16 = 16, u32 = 32, u64 = 64, u128 = 128, bool = 1);
+
+macro_rules! new_types {
+    (
+        $($name: ident($count: literal, $inner: ty) => [$($into: ty),*]),*
+    ) => {
+        $(
+
+        #[allow(non_camel_case_types)]
+        #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+        pub struct $name($inner);
+
+        impl Debug for $name {
+            fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+                f.write_fmt(format_args!("{}", self.0))
+            }
+        }
+
+        #[macro_export]
+        macro_rules! $name {
+            ($value: literal) => {
+                {
+                    const VALUE: $inner = $value;
+
+                    // this is always valid because we have one more bit than we need in $inner
+                    // type
+                    const MAX: $inner = (1 << ($count)) - 1;
+                    const PANIC_IF_GT: $inner = MAX - VALUE;
+                    unsafe {bit_struct::$name::new_unchecked(VALUE)}
+                }
+            };
+        }
+
+
+        unsafe impl BitCount for $name {
+            const COUNT: usize = $count;
+        }
+
+        impl $name {
+            pub unsafe fn new_unchecked(value: $inner) -> Self {
+                Self(value)
+            }
+
+            pub fn inner(self) -> $inner {
+                self.0
+            }
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self(0)
+            }
+        }
+
+        $(
+            impl From<$name> for $into {
+                fn from(name: $name) -> $into {
+                    name.0 as $into
+                }
+            }
+
+            impl TryFrom<$into> for $name {
+                type Error = ();
+
+                fn try_from(inner: $into) -> Result<$name, ()>{
+                   if inner >= (1 << $count) {
+                       Err(())
+                   }  else {
+                       Ok($name(inner as $inner))
+                   }
+                }
+            }
+        )*
+        )*
+    };
+}
+
+new_types!(
+    u1  (1, u8)   => [u8, u16, u32, u64, u128],
+    u2  (2, u8)   => [u8, u16, u32, u64, u128],
+    u3  (3, u8)   => [u8, u16, u32, u64, u128],
+    u4  (4, u8)   => [u8, u16, u32, u64, u128],
+    u5  (5, u8)   => [u8, u16, u32, u64, u128],
+    u6  (6, u8)   => [u8, u16, u32, u64, u128],
+    u7  (7, u8)   => [u8, u16, u32, u64, u128],
+    u9  (9, u16)  => [u16, u32, u64, u128],
+    u10 (10, u16) => [u16, u32, u64, u128],
+    u11 (11, u16) => [u16, u32, u64, u128]
+);
 
 impl<
         'a,
@@ -60,9 +182,14 @@ impl<
     > GetSet<'a, P, T, START, STOP>
 {
     /// Get the property. Returns an error it does not exist.
-    pub fn get(&self) -> Result<T, T::Error> {
+    pub fn get(&self) -> T {
         let section = self.get_raw();
-        T::try_from(section)
+        unsafe { core::mem::transmute_copy(&section) }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        let section = self.get_raw();
+        T::try_from(section).is_ok()
     }
 
     pub fn get_raw(&self) -> P {
@@ -82,18 +209,21 @@ impl<
             + BitAnd<Output = P>
             + ShlAssign<usize>
             + ShrAssign<usize>
-            + Bounded,
-        T: Into<P>,
+            + PartialOrd
+            + Bounded
+            + Sized,
+        T: Into<P> + Sized,
         const START: usize,
         const STOP: usize,
     > GetSet<'a, P, T, START, STOP>
 {
-    /// Set the property
+    /// Set the property with a core::mem::transmute_copy
     pub fn set(&mut self, value: T) {
-        self.set_raw(value.into());
+        let value = unsafe { core::mem::transmute_copy(&value) };
+        unsafe { self.set_raw(value) }
     }
 
-    pub fn set_raw(&mut self, value: P) {
+    pub unsafe fn set_raw(&mut self, value: P) {
         let mask = self.mask();
         let mask_shifted = mask << START;
 
@@ -106,6 +236,21 @@ impl<
     }
 }
 
+#[macro_export]
+macro_rules! impl_fields {
+
+    ($on: expr, $kind: ty =>
+    [$($first_field_doc: expr),*], $head_field: ident, $head_actual: ty $(, [$($field_doc: expr),*], $field: ident, $actual: ty)*) => {
+        $(#[doc=$first_field_doc])*
+        pub fn $head_field(&mut self) -> bit_struct::GetSet<'_, $kind, $head_actual, {$on - <$head_actual as bit_struct::BitCount>::COUNT}, {$on - 1}> {
+            bit_struct::GetSet::new(&mut self.0)
+        }
+
+        bit_struct::impl_fields!($on - <$head_actual as bit_struct::BitCount>::COUNT, $kind => $([$($field_doc),*], $field, $actual),*);
+    };
+    ($on: expr, $kind: ty =>) => {};
+}
+
 /// Helper macro
 #[macro_export]
 macro_rules! bit_struct_impl {
@@ -115,7 +260,7 @@ macro_rules! bit_struct_impl {
         $struct_vis: vis struct $name: ident ($kind: ty) {
         $(
             $(#[doc = $field_doc:expr])*
-            $field: ident($start: literal, $end: literal): $actual: ty
+            $field: ident: $actual: ty
         ),* $(,)?
         }
     ) => {
@@ -125,7 +270,7 @@ macro_rules! bit_struct_impl {
         $struct_vis struct $name ($kind) {
         $(
             $(#[doc = $field_doc])*
-            $field($start, $end): $actual
+            $field: $actual
         ),*
         }
 
@@ -133,7 +278,7 @@ macro_rules! bit_struct_impl {
 
         impl Default for $name {
             fn default() -> Self {
-                let mut res = Self(0);
+                let mut res = unsafe { Self::from_unchecked(0) };
                 $(
                     res.$field().set(Default::default());
                 )*
@@ -148,42 +293,20 @@ macro_rules! bit_struct_impl {
         $struct_vis: vis struct $name: ident ($kind: ty) {
         $(
             $(#[doc = $field_doc:expr])*
-            $field: ident($start: literal, $end: literal): $actual: ty
+            $field: ident: $actual: ty
         ),* $(,)?
         }
     ) => {
-
-        $(#[doc = $struct_doc])*
-        #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord)]
-        $struct_vis struct $name($kind);
 
         impl ::core::fmt::Debug for $name {
             fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> core::fmt::Result {
                 let mut copied = *self;
                 f.debug_struct(stringify!($name))
-                    .field("raw", &copied.0)
                     $(
                         .field(stringify!($field), &copied.$field().get())
                     )*
                     .finish()
             }
-        }
-
-        impl $name {
-            pub fn new($($field: $actual),*) -> Self {
-                let mut res = Self(0);
-                $(
-                    res.$field().set($field);
-                )*
-                res
-            }
-
-            $(
-            $(#[doc=$field_doc])*
-            pub fn $field(&mut self) -> bit_struct::GetSet<'_, $kind, $actual, $start, $end>{
-                bit_struct::GetSet::new(&mut self.0)
-            }
-            )*
         }
     };
 }
@@ -198,11 +321,62 @@ macro_rules! bit_struct {
         $struct_vis: vis struct $name: ident ($kind: ty) {
         $(
             $(#[doc = $field_doc:expr])*
-            $field: ident($start: literal, $end: literal): $actual: ty
+            $field: ident: $actual: ty
         ),* $(,)?
         }
         )*
     ) => {
+
+        mod bit_struct_private_impl {
+            use super::*;
+
+            $(
+            $(#[doc = $struct_doc])*
+            #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord)]
+            pub struct $name($kind);
+
+            impl TryFrom<$kind> for $name {
+                type Error = ();
+                fn try_from(elem: $kind) -> Result<$name, ()> {
+                    let mut res = Self(elem);
+                    $(
+                        if !res.$field().is_valid() {
+                            return Err(());
+                        }
+                    )*
+                    Ok(res)
+                }
+            }
+
+            impl $name {
+
+                pub unsafe fn from_unchecked(inner: $kind) -> Self {
+                   Self(inner)
+                }
+
+                pub fn new($($field: $actual),*) -> Self {
+                    let mut res = Self(0);
+                    $(
+                        res.$field().set($field);
+                    )*
+                    res
+                }
+
+                pub fn raw(self) -> $kind {
+                    self.0
+                }
+
+                bit_struct::impl_fields!(<$kind as bit_struct::BitCount>::COUNT, $kind => $([$($field_doc),*], $field, $actual),*);
+            }
+
+            )*
+        }
+
+        $(
+        pub use bit_struct_private_impl::$name;
+        )*
+
+
         $(
         bit_struct::bit_struct_impl!(
         $(#[doc = $struct_doc])*
@@ -210,13 +384,37 @@ macro_rules! bit_struct {
         $struct_vis struct $name ($kind) {
         $(
             $(#[doc = $field_doc])*
-            $field($start, $end): $actual
+            $field: $actual
         ),*
         }
 
         );
         )*
     };
+}
+
+#[macro_export]
+macro_rules! count_idents {
+    ($on: expr, [$head: ident $(,$xs: ident)*]) => {
+        bit_struct::count_idents!($on + 1, [$($xs),*])
+    };
+    ($on: expr, []) => {
+        $on
+    }
+}
+
+pub const fn bits(num: usize) -> usize {
+    const fn helper(count: usize, on: usize) -> usize {
+        // 0b11 = 3  log2_ceil(0b11) = 2 .. 2^2
+        // 0b10 = 2 log2_ceil = 2 .. 2^1
+        if on > 0 {
+            helper(count + 1, on >> 1)
+        } else {
+            count
+        }
+    }
+
+    helper(0, num)
 }
 
 /// Not meant to be directly used
@@ -246,6 +444,10 @@ macro_rules! enum_impl {
                 $(#[doc = $field_doc])*
                 $field
             ),*
+        }
+
+        unsafe impl bit_struct::BitCount for $name {
+            const COUNT: usize = bit_struct::bits(bit_struct::count_idents!(0, [$($field),*]));
         }
 
         impl Default for $name {
@@ -367,6 +569,11 @@ macro_rules! enum_impl {
                 $name::$fst_field
             }
         }
+
+        unsafe impl bit_struct::BitCount for $name {
+            const COUNT: usize = bit_struct::bits(bit_struct::count_idents!(0, [$($field),*]));
+        }
+
 
         impl TryFrom<u8> for $name {
 
