@@ -1,10 +1,11 @@
 use bit_struct::*;
 
 enums!(
+    /// A doc comment
     pub ModeA(Two) { Zero, One, Two }
     pub ModeB(One) { Zero, One, Two }
     pub ModeC(Zero) { Zero, One, Two }
-    pub ModeD { Zero, One, Two }
+    ModeD { Zero, One, Two }
     OrderA {A, B}
     OrderB(B) {A, B}
 );
@@ -192,4 +193,10 @@ fn test_bit_struct_creation() {
     assert_eq!(abc.mode().get(), ModeA::Two);
     assert_eq!(abc._padding().get(), u4!(0));
     assert_eq!(abc.count().get(), u2!(0b11));
+}
+
+#[test]
+fn fails(){
+    let t = trybuild::TestCases::new();
+    t.compile_fail("tests/compile/*.rs");
 }

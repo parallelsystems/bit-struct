@@ -311,7 +311,86 @@ macro_rules! bit_struct_impl {
     };
 }
 
-/// Create a bit struct. Look at tests folder to see examples.
+/// Create a bit struct.
+///
+///
+/// This macro can only be used once for each module.
+/// This is because the macro creates sub-module to limit access to certain
+/// unsafe access. In the macro, bit-structs can be defined just like a struct outside of the
+/// the macro. The catch is a **base type** must be specified. Valid base types are
+/// u{8,16,32,64,128}. The elements stored in the struct are statically guaranteed to not
+/// exceed the number of bits in the base type. This means we cannot store a `u16` in a `u8`, but
+/// it also means we cannot store 9 [bit_struct::u1]s in a u8.
+///
+/// Elements start at the top of the number (for a u16 this would be the 15th bit) and progress
+/// down.
+///
+/// # Example
+/// ```
+/// bit_struct::enums! {
+///     /// The default value for each enum is always the first
+///     pub ThreeVariants { Zero, One, Two }
+///
+///     /// This is syntax to set the default value to Cat
+///     pub Animal(Cat) { Cow, Bird, Cat, Dog }
+///
+///     pub Color { Orange, Red, Blue, Yellow, Green }
+/// }
+///
+/// bit_struct::bit_struct! {
+///     /// We can write documentation for the struct here. Here BitStruct1
+///     /// derives default values from the above enums macro
+///     #[derive(Default)]
+///     struct BitStruct1 (u16){
+///         /// a 1 bit element. This is stored in u16[15]
+///         a: bit_struct::u1,
+///
+///         /// This is calculated to take up 2 bits. This is stored in u16[13..=14]
+///         variant: ThreeVariants,
+///
+///         /// This also takes 2 bits. This is stored in u16[11..=12]
+///         animal: Animal,
+///
+///         /// This takes up 3 bits. This is stored u16[8..=10]
+///         color: Color,
+///     }
+///
+///     struct BitStruct2(u32) {
+///         /// We could implement for this too. Note, this does not have a default
+///         a_color: Color,
+///         b: bit_struct::u3,
+///     }
+/// }
+///
+/// fn main() {
+///     use std::convert::TryFrom;
+///     let mut bit_struct: BitStruct1 = BitStruct1::default();
+///
+///     assert_eq!(bit_struct.a().start(), 15);
+///     assert_eq!(bit_struct.a().stop(), 15);
+///
+///     assert_eq!(bit_struct.color().start(), 8);
+///     assert_eq!(bit_struct.color().stop(), 10);
+///
+///     assert_eq!(format!("{:?}", bit_struct), "BitStruct1 { a: 0, variant: Zero, animal: Cat, color: Orange }");
+///     assert_eq!(bit_struct.raw(), 4096);
+///
+///     let reverse_bit_struct = BitStruct1::try_from(4096);
+///     assert_eq!(format!("{:?}", reverse_bit_struct), "Ok(BitStruct1 { a: 0, variant: Zero, animal: Cat, color: Orange })");
+///
+///
+///     // u3! macro provides a static assert that the number is not too large
+///     let mut other_struct = BitStruct2::new(Color::Green, bit_struct::u3!(0b101));
+///     assert_eq!(format!("{:?}", other_struct), "BitStruct2 { a_color: Green, b: 5 }");
+///
+///     assert_eq!(other_struct.a_color().get(), Color::Green);
+///
+///     other_struct.a_color().set(Color::Red);
+///
+///     assert_eq!(other_struct.a_color().get(), Color::Red);
+/// }
+/// ```
+///
 #[macro_export]
 macro_rules! bit_struct {
     (
@@ -675,7 +754,7 @@ macro_rules! enums {
         )+
     ) => {
         $(
-        enum_impl!(
+        bit_struct::enum_impl!(
         $(#[doc = $struct_doc])*
         $(#[derive($($struct_der),+)])?
         $enum_vis $name $(($enum_default))?{
