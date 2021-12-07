@@ -48,6 +48,11 @@ macro_rules! bit_counts {
 
 bit_counts!(u8 = 8, u16 = 16, u32 = 32, u64 = 64, u128 = 128, bool = 1);
 
+impl u1 {
+    pub const TRUE: u1 = u1(1);
+    pub const FALSE: u1 = u1(0);
+}
+
 macro_rules! new_types {
     (
         $($name: ident($count: literal, $inner: ty) => [$($into: ty),*]),*
@@ -85,6 +90,9 @@ macro_rules! new_types {
         }
 
         impl $name {
+            /// Create a new $name from value
+            /// # Safety
+            /// - value must fit within the number of bits defined in the type
             pub unsafe fn new_unchecked(value: $inner) -> Self {
                 Self(value)
             }
@@ -273,6 +281,10 @@ impl<
         unsafe { self.set_raw(value) }
     }
 
+    /// Set the field to a raw value.
+    /// # Safety
+    /// value must be a valid representation of the field. i.e., `core::mem::transmute` between
+    /// P and T must be defined.
     pub unsafe fn set_raw(&mut self, value: P) {
         let mask = self.mask();
         let mask_shifted = mask << START;
@@ -361,6 +373,9 @@ macro_rules! bit_struct_impl {
     };
 }
 
+// the main is actually needed
+
+#[allow(clippy::needless_doctest_main)]
 /// Create a bit struct.
 ///
 ///
@@ -483,6 +498,7 @@ macro_rules! bit_struct {
                    Self(inner)
                 }
 
+                #[allow(clippy::too_many_arguments)]
                 pub fn new($($field: $actual),*) -> Self {
                     let mut res = Self(0);
                     $(
