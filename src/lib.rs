@@ -320,7 +320,7 @@ macro_rules! bit_struct_impl {
 /// the macro. The catch is a **base type** must be specified. Valid base types are
 /// u{8,16,32,64,128}. The elements stored in the struct are statically guaranteed to not
 /// exceed the number of bits in the base type. This means we cannot store a `u16` in a `u8`, but
-/// it also means we cannot store 9 [bit_struct::u1]s in a u8.
+/// it also means we cannot store 9 `u1`s in a u8.
 ///
 /// Elements start at the top of the number (for a u16 this would be the 15th bit) and progress
 /// down.
