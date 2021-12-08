@@ -2,7 +2,7 @@
 
 #![no_std]
 
-use core::fmt::{Debug, Formatter};
+use core::fmt::{Debug, Display, Formatter};
 use core::marker::PhantomData;
 use core::ops::{BitAnd, BitOrAssign, BitXorAssign, Shl, ShlAssign, Shr, ShrAssign};
 use num_traits::{Bounded, Num};
@@ -71,6 +71,12 @@ macro_rules! new_types {
         pub struct $name($inner);
 
         impl Debug for $name {
+            fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+                f.write_fmt(format_args!("{}", self.0))
+            }
+        }
+
+        impl Display for $name {
             fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
                 f.write_fmt(format_args!("{}", self.0))
             }

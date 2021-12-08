@@ -155,6 +155,14 @@ fn test_new_types() {
     assert_eq!(u2::try_from(0b10_u8).unwrap().inner(), 2);
     assert_eq!(u2::try_from(0b11_u8).unwrap().inner(), 3);
     assert!(u2::try_from(0b100_u8).is_err());
+
+    assert_eq!(format!("{}", u1!(0)), "0");
+    assert_eq!(format!("{}", u1!(1)), "1");
+
+    assert_eq!(format!("{}", u2!(0)), "0");
+    assert_eq!(format!("{}", u2!(1)), "1");
+    assert_eq!(format!("{}", u2!(2)), "2");
+    assert_eq!(format!("{}", u2!(3)), "3");
 }
 
 #[test]
