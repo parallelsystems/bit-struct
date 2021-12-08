@@ -60,7 +60,7 @@ macro_rules! new_types {
         $(
 
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+        #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
         pub struct $name($inner);
 
         impl Debug for $name {
@@ -476,7 +476,7 @@ macro_rules! bit_struct {
 
             $(
             $(#[doc = $struct_doc])*
-            #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord)]
+            #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord, Hash)]
             pub struct $name($kind);
 
             impl TryFrom<$kind> for $name {
