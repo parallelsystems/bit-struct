@@ -91,7 +91,7 @@ macro_rules! new_types {
                     // this is always valid because we have one more bit than we need in $inner
                     // type
                     const MAX: $inner = (1 << ($count)) - 1;
-                    const PANIC_IF_GT: $inner = MAX - VALUE;
+                    const _: () = assert!(MAX >= VALUE, "The provided value is too large");
                     unsafe {bit_struct::$name::new_unchecked(VALUE)}
                 }
             };
