@@ -25,9 +25,15 @@ bit_struct!(
 );
 
 #[test]
-fn full_count(){
+fn test_full_count() {
     let full_count = FullCount::new(124);
     assert_eq!(full_count.raw(), 124);
+}
+
+#[test]
+fn test_of_defaults() {
+    let full_count = FullCount::of_defaults();
+    assert_eq!(full_count.raw(), 0);
 }
 
 #[test]
@@ -52,7 +58,6 @@ fn test_enum_froms() {
 
     froms!(ModeA, u8, u16, u32, u64, u128);
     froms!(ModeD, u8, u16, u32, u64, u128);
-
 }
 
 #[test]
@@ -69,7 +74,6 @@ fn test_enum_intos() {
 
     intos!(ModeA, u8, u16, u32, u64, u128);
     intos!(ModeD, u8, u16, u32, u64, u128);
-
 }
 
 #[test]
@@ -94,7 +98,10 @@ fn test_bit_struct_defaults() {
 #[test]
 fn test_bit_struct_debug() {
     let abc = Abc::default();
-    assert_eq!(format!("{:?}", abc), "Abc { mode: Two, _padding: 0, count: 0 }");
+    assert_eq!(
+        format!("{:?}", abc),
+        "Abc { mode: Two, _padding: 0, count: 0 }"
+    );
 }
 
 #[test]
@@ -108,14 +115,14 @@ fn test_bit_struct_raw_values() {
     // 0x4200
     assert_eq!(abc.raw(), 0x4200);
 
-    let eq_abc = unsafe { Abc::from_unchecked(0x4200)};
+    let eq_abc = unsafe { Abc::from_unchecked(0x4200) };
 
     assert_eq!(eq_abc.raw(), 0x4200);
     assert_eq!(eq_abc, abc);
 }
 
 #[test]
-fn test_new_types(){
+fn test_new_types() {
     assert_eq!(u1!(0).inner(), 0b0);
     assert_eq!(u1!(1).inner(), 0b1);
 
@@ -142,19 +149,19 @@ fn test_new_types(){
 }
 
 #[test]
-fn test_valid_struct(){
+fn test_valid_struct() {
     // 0b[AA]** **** **** ****
     // makes Abc valid where AA is 0b00, 0b01, 0b10
     // makes Abc invalid where AA is 0b11
 
-    for first_bits in 0x0 .. 0xF {
+    for first_bits in 0x0..0xF {
         let raw = first_bits << 12;
         let mode_a_bits = first_bits >> 2;
         let conversion = Abc::try_from(raw);
         let valid = match mode_a_bits {
             0b00 | 0b01 | 0b10 => conversion.is_ok(),
             0b11 => conversion.is_err(),
-            _ => panic!("impossible")
+            _ => panic!("impossible"),
         };
 
         assert!(valid);
@@ -196,7 +203,7 @@ fn test_bit_struct_creation() {
 }
 
 #[test]
-fn fails(){
+fn fails() {
     let t = trybuild::TestCases::new();
     t.compile_fail("tests/compile/*.rs");
 }

@@ -340,11 +340,7 @@ macro_rules! bit_struct_impl {
 
         impl Default for $name {
             fn default() -> Self {
-                let mut res = unsafe { Self::from_unchecked(0) };
-                $(
-                    res.$field().set(Default::default());
-                )*
-                res
+                Self::of_defaults()
             }
         }
 
@@ -359,6 +355,21 @@ macro_rules! bit_struct_impl {
         ),* $(,)?
         }
     ) => {
+
+        impl $name {
+
+            /// Returns a valid representation for the bit_struct, where all values are
+            /// the defaults. This is different than Self::default(), because the actual
+            /// default implementation might not be composed of only the defaults of the
+            /// given fields
+            pub fn of_defaults() -> Self {
+                let mut res = unsafe { Self::from_unchecked(0) };
+                $(
+                    res.$field().set(Default::default());
+                )*
+                res
+            }
+        }
 
         impl ::core::fmt::Debug for $name {
             fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> core::fmt::Result {
