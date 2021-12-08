@@ -37,6 +37,15 @@ fn test_of_defaults() {
 }
 
 #[test]
+fn test_toggle() {
+    let v = u1::TRUE;
+    assert_eq!(v, u1::TRUE);
+    assert_eq!(v.toggle(), u1::FALSE);
+    assert_eq!(v.toggle().toggle(), u1::TRUE);
+}
+
+
+#[test]
 fn test_enum_froms() {
     macro_rules! froms {
         ($enum_var: ty, $($kind: ty),*) => {

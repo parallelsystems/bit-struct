@@ -51,6 +51,13 @@ bit_counts!(u8 = 8, u16 = 16, u32 = 32, u64 = 64, u128 = 128, bool = 1);
 impl u1 {
     pub const TRUE: u1 = u1(1);
     pub const FALSE: u1 = u1(0);
+
+    pub fn toggle(self) -> Self {
+        match self {
+            Self::FALSE => u1::TRUE,
+            _ => Self::FALSE
+        }
+    }
 }
 
 macro_rules! new_types {
