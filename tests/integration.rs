@@ -22,7 +22,23 @@ bit_struct!(
     struct FullCount(u16){
         count: u16,
     }
+
+    struct NonCoreBase(u24){
+        count: u16,
+        next: u8,
+    }
 );
+
+#[test]
+fn test_non_core_base() {
+    let mut non_core_base = NonCoreBase::new(123, 67);
+
+    let count = non_core_base.count().get();
+    assert_eq!(count, 123);
+
+    let next = non_core_base.next().get();
+    assert_eq!(next, 67);
+}
 
 #[test]
 fn test_full_count() {
@@ -42,30 +58,6 @@ fn test_toggle() {
     assert_eq!(v, u1::TRUE);
     assert_eq!(v.toggle(), u1::FALSE);
     assert_eq!(v.toggle().toggle(), u1::TRUE);
-}
-
-#[test]
-fn test_enum_froms() {
-    macro_rules! froms {
-        ($enum_var: ty, $($kind: ty),*) => {
-            $(
-            for i in 0..5 {
-                let i: $kind = i;
-                let mode = <$enum_var>::try_from(i);
-                let expected = match i {
-                    0 => Ok(<$enum_var>::Zero),
-                    1 => Ok(<$enum_var>::One),
-                    2 => Ok(<$enum_var>::Two),
-                    _ => Err(())
-                };
-                assert_eq!(expected, mode);
-            }
-            )*
-        };
-    }
-
-    froms!(ModeA, u8, u16, u32, u64, u128);
-    froms!(ModeD, u8, u16, u32, u64, u128);
 }
 
 #[test]
