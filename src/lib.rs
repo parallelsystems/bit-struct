@@ -612,7 +612,7 @@ new_unsigned_types!(
 );
 
 macro_rules! byte_from_impls {
-    ($($kind: ty: $super_kind: ty)*) => {
+    ($($kind: ident: $super_kind: ty)*) => {
         $(
         impl $kind {
             const ARR_SIZE: usize = <$kind>::COUNT / 8;
@@ -655,7 +655,7 @@ macro_rules! byte_from_impls {
         impl From<u8> for $kind {
             fn from(byte: u8) -> Self {
                 let inner = <$super_kind>::from(byte);
-                <$kind>::new(inner).unwrap()
+                $kind(inner)
             }
         }
         )*
@@ -667,6 +667,10 @@ byte_from_impls! {
     u40: u64
     u48: u64
     u56: u64
+    i24: u32
+    i40: u64
+    i48: u64
+    i56: u64
 }
 
 impl<

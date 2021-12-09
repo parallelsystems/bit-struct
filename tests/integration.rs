@@ -60,6 +60,11 @@ fn test_non_core_base() {
 
     let next = non_core_base.next().get();
     assert_eq!(next, 67);
+
+    let raw = non_core_base.raw();
+
+    let circle = NonCoreBase::try_from(raw).unwrap();
+    assert_eq!(circle, non_core_base)
 }
 
 #[test]
