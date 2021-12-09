@@ -44,16 +44,24 @@ fn full_test() {
     assert_eq!(bit_struct.color().start(), 8);
     assert_eq!(bit_struct.color().stop(), 10);
 
-    assert_eq!(format!("{:?}", bit_struct), "BitStruct1 { a: 0, variant: Zero, animal: Cat, color: Orange }");
+    assert_eq!(
+        format!("{:?}", bit_struct),
+        "BitStruct1 { a: 0, variant: Zero, animal: Cat, color: Orange }"
+    );
     assert_eq!(bit_struct.raw(), 4096);
 
     let reverse_bit_struct = BitStruct1::try_from(4096);
-    assert_eq!(format!("{:?}", reverse_bit_struct), "Ok(BitStruct1 { a: 0, variant: Zero, animal: Cat, color: Orange })");
-
+    assert_eq!(
+        format!("{:?}", reverse_bit_struct),
+        "Ok(BitStruct1 { a: 0, variant: Zero, animal: Cat, color: Orange })"
+    );
 
     // u3! macro provides a static assert that the number is not too large
     let mut other_struct = BitStruct2::new(Color::Green, bit_struct::u3!(0b101));
-    assert_eq!(format!("{:?}", other_struct), "BitStruct2 { a_color: Green, b: 5 }");
+    assert_eq!(
+        format!("{:?}", other_struct),
+        "BitStruct2 { a_color: Green, b: 5 }"
+    );
 
     assert_eq!(other_struct.a_color().get(), Color::Green);
 

@@ -44,7 +44,6 @@ fn test_toggle() {
     assert_eq!(v.toggle().toggle(), u1::TRUE);
 }
 
-
 #[test]
 fn test_enum_froms() {
     macro_rules! froms {
@@ -145,7 +144,6 @@ fn test_new_signed_types() {
     assert_eq!(i2!(0).signed(), 0);
     assert_eq!(i2!(1).signed(), 1);
 
-
     assert_eq!(i3!(-4).inner_raw(), 0b100);
     assert_eq!(i3!(-3).inner_raw(), 0b101);
     assert_eq!(i3!(-2).inner_raw(), 0b110);
@@ -164,16 +162,16 @@ fn test_new_signed_types() {
     assert_eq!(i3!(2).inner_raw(), 0b010);
     assert_eq!(i3!(3).inner_raw(), 0b011);
 
-    assert!(i3::try_from(-5_i8).is_err());
-    assert!(i3::try_from(-4_i8).is_ok());
-    assert!(i3::try_from(-3_i8).is_ok());
-    assert!(i3::try_from(-2_i8).is_ok());
-    assert!(i3::try_from(-1_i8).is_ok());
-    assert!(i3::try_from(0_i8).is_ok());
-    assert!(i3::try_from(1_i8).is_ok());
-    assert!(i3::try_from(2_i8).is_ok());
-    assert!(i3::try_from(3_i8).is_ok());
-    assert!(i3::try_from(4_i8).is_err());
+    assert!(i3::new(-5).is_none());
+    assert!(i3::new(-4).is_some());
+    assert!(i3::new(-3).is_some());
+    assert!(i3::new(-2).is_some());
+    assert!(i3::new(-1).is_some());
+    assert!(i3::new(0).is_some());
+    assert!(i3::new(1).is_some());
+    assert!(i3::new(2).is_some());
+    assert!(i3::new(3).is_some());
+    assert!(i3::new(4).is_none());
 }
 
 #[test]
