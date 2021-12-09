@@ -4,8 +4,40 @@
 
 use core::fmt::{Debug, Display, Formatter};
 use core::marker::PhantomData;
-use core::ops::{BitAnd, BitOrAssign, BitXorAssign, Shl, ShlAssign, Shr, ShrAssign};
+use core::ops::{BitAnd, BitOrAssign, BitXorAssign, Deref, DerefMut, Shl, ShlAssign, Shr, ShrAssign};
 use num_traits::{Bounded, Num};
+
+#[repr(transparent)]
+#[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord, Hash, Default)]
+pub struct UnsafeStorage<T>(T);
+
+impl <T> UnsafeStorage<T> {
+    pub fn new_unsafe(inner: T) -> Self {
+        Self(inner)
+    }
+}
+
+impl <T> Deref for UnsafeStorage<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl <T> DerefMut for UnsafeStorage<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl <T: Copy> UnsafeStorage<T> {
+    pub fn inner(&self) -> T {
+        self.0
+    }
+}
+
+
 
 /// A struct which allows for getting/setting a given property
 pub struct GetSet<'a, P, T, const START: usize, const STOP: usize> {
@@ -674,57 +706,47 @@ macro_rules! bit_struct {
         }
         )*
     ) => {
+        $(
+        $(#[doc = $struct_doc])*
+        #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord, Hash)]
+        pub struct $name(bit_struct::UnsafeStorage<$kind>);
 
-        mod bit_struct_private_impl {
-            use super::*;
-
-            $(
-            $(#[doc = $struct_doc])*
-            #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord, Hash)]
-            pub struct $name($kind);
-
-            impl TryFrom<$kind> for $name {
-                type Error = ();
-                fn try_from(elem: $kind) -> Result<$name, ()> {
-                    let mut res = Self(elem);
-                    $(
-                        if !res.$field().is_valid() {
-                            return Err(());
-                        }
-                    )*
-                    Ok(res)
-                }
+        impl TryFrom<$kind> for $name {
+            type Error = ();
+            fn try_from(elem: $kind) -> Result<$name, ()> {
+                let mut res = unsafe{Self::from_unchecked(elem)};
+                $(
+                    if !res.$field().is_valid() {
+                        return Err(());
+                    }
+                )*
+                Ok(res)
             }
-
-            impl $name {
-
-                pub unsafe fn from_unchecked(inner: $kind) -> Self {
-                   Self(inner)
-                }
-
-                #[allow(clippy::too_many_arguments)]
-                pub fn new($($field: $actual),*) -> Self {
-                    let mut res = Self(0);
-                    $(
-                        res.$field().set($field);
-                    )*
-                    res
-                }
-
-                pub fn raw(self) -> $kind {
-                    self.0
-                }
-
-                bit_struct::impl_fields!(<$kind as bit_struct::BitCount>::COUNT, $kind => $([$($field_doc),*], $field, $actual),*);
-            }
-
-            )*
         }
 
-        $(
-        pub use bit_struct_private_impl::$name;
-        )*
+        impl $name {
 
+            pub unsafe fn from_unchecked(inner: $kind) -> Self {
+               Self(bit_struct::UnsafeStorage::new_unsafe(inner))
+            }
+
+            #[allow(clippy::too_many_arguments)]
+            pub fn new($($field: $actual),*) -> Self {
+                let mut res = unsafe { Self::from_unchecked(0) };
+                $(
+                    res.$field().set($field);
+                )*
+                res
+            }
+
+            pub fn raw(self) -> $kind {
+                self.0.inner()
+            }
+
+            bit_struct::impl_fields!(<$kind as bit_struct::BitCount>::COUNT, $kind => $([$($field_doc),*], $field, $actual),*);
+        }
+
+        )*
 
         $(
         bit_struct::bit_struct_impl!(
