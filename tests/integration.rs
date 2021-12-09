@@ -131,7 +131,53 @@ fn test_bit_struct_raw_values() {
 }
 
 #[test]
-fn test_new_types() {
+fn test_new_signed_types() {
+    assert_eq!(i2::MAX, 1);
+    assert_eq!(i2::MIN, -2);
+
+    assert_eq!(i2!(-2).inner_raw(), 0b10);
+    assert_eq!(i2!(-1).inner_raw(), 0b11);
+    assert_eq!(i2!(0).inner_raw(), 0b00);
+    assert_eq!(i2!(1).inner_raw(), 0b01);
+
+    assert_eq!(i2!(-2).signed(), -2);
+    assert_eq!(i2!(-1).signed(), -1);
+    assert_eq!(i2!(0).signed(), 0);
+    assert_eq!(i2!(1).signed(), 1);
+
+
+    assert_eq!(i3!(-4).inner_raw(), 0b100);
+    assert_eq!(i3!(-3).inner_raw(), 0b101);
+    assert_eq!(i3!(-2).inner_raw(), 0b110);
+    assert_eq!(i3!(-1).inner_raw(), 0b111);
+    assert_eq!(i3!(0).inner_raw(), 0b000);
+    assert_eq!(i3!(1).inner_raw(), 0b001);
+    assert_eq!(i3!(2).inner_raw(), 0b010);
+    assert_eq!(i3!(3).inner_raw(), 0b011);
+
+    assert_eq!(i3!(-4).inner_raw(), 0b100);
+    assert_eq!(i3!(-3).inner_raw(), 0b101);
+    assert_eq!(i3!(-2).inner_raw(), 0b110);
+    assert_eq!(i3!(-1).inner_raw(), 0b111);
+    assert_eq!(i3!(0).inner_raw(), 0b000);
+    assert_eq!(i3!(1).inner_raw(), 0b001);
+    assert_eq!(i3!(2).inner_raw(), 0b010);
+    assert_eq!(i3!(3).inner_raw(), 0b011);
+
+    assert!(i3::try_from(-5_i8).is_err());
+    assert!(i3::try_from(-4_i8).is_ok());
+    assert!(i3::try_from(-3_i8).is_ok());
+    assert!(i3::try_from(-2_i8).is_ok());
+    assert!(i3::try_from(-1_i8).is_ok());
+    assert!(i3::try_from(0_i8).is_ok());
+    assert!(i3::try_from(1_i8).is_ok());
+    assert!(i3::try_from(2_i8).is_ok());
+    assert!(i3::try_from(3_i8).is_ok());
+    assert!(i3::try_from(4_i8).is_err());
+}
+
+#[test]
+fn test_new_unsigned_types() {
     assert_eq!(u1!(0).inner(), 0b0);
     assert_eq!(u1!(1).inner(), 0b1);
 

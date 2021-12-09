@@ -60,7 +60,113 @@ impl u1 {
     }
 }
 
-macro_rules! new_types {
+macro_rules! new_signed_types {
+    (
+        $($name: ident($count: literal, $inner: ty, $signed: ty) => [$($into: ty),*]),*
+    ) => {
+        $(
+
+        #[allow(non_camel_case_types)]
+        #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+        pub struct $name($inner);
+
+        impl Debug for $name {
+            fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+                f.write_fmt(format_args!("{}", self.0))
+            }
+        }
+
+        impl Display for $name {
+            fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+                f.write_fmt(format_args!("{}", self.0))
+            }
+        }
+
+        #[macro_export]
+        macro_rules! $name {
+            ($value: expr) => {
+                {
+                    const VALUE: $signed = $value;
+                    const _: () = assert!(VALUE <= $name::MAX, "The provided value is too large");
+                    const _: () = assert!(VALUE >= $name::MIN, "The provided value is too small");
+                    let res: $name = unsafe {bit_struct::$name::new_unchecked(VALUE)};
+                    res
+                }
+            };
+        }
+
+
+        unsafe impl BitCount for $name {
+            const COUNT: usize = $count;
+        }
+
+        impl $name {
+            /// Create a new $name from value
+            /// # Safety
+            /// - value must fit within the number of bits defined in the type
+            pub unsafe fn new_unchecked(value: $signed) -> Self {
+                let unsigned_value = value as $inner;
+                if value >= 0 {
+                    Self(unsigned_value)
+                } else {
+                    // we can do this
+                    let value = unsigned_value & Self::MAX_UNSIGNED;
+                    Self(value | Self::POLARITY_FLAG)
+                }
+            }
+
+            pub fn inner_raw(self) -> $inner {
+                self.0
+            }
+
+            const POLARITY_FLAG: $inner = (1 << ($count - 1));
+            const MAX_UNSIGNED: $inner = (1 << ($count-1)) - 1;
+            pub const MAX: $signed = Self::MAX_UNSIGNED as $signed;
+            pub const MIN: $signed = -(Self::MAX_UNSIGNED as $signed) - 1;
+
+            pub fn signed(self) -> $signed {
+                match self.0 >> ($count - 1) {
+                    0 => self.0 as $signed,
+                    _ => {
+                        // 0's out negative
+                        let rem = self.0 ^ Self::POLARITY_FLAG;
+                        let amount = Self::MAX_UNSIGNED - rem;
+                        -(amount as $signed) - 1
+                    }
+                }
+            }
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self(0)
+            }
+        }
+
+        $(
+            impl From<$name> for $into {
+                fn from(name: $name) -> $into {
+                    name.0 as $into
+                }
+            }
+
+            impl TryFrom<$into> for $name {
+                type Error = ();
+
+                fn try_from(inner: $into) -> Result<$name, ()>{
+                   if inner > (Self::MAX as $into) || inner < (Self::MIN as $into) {
+                       Err(())
+                   }  else {
+                       Ok(unsafe {$name::new_unchecked(inner as $signed)})
+                   }
+                }
+            }
+        )*
+        )*
+    };
+}
+
+macro_rules! new_unsigned_types {
     (
         $($name: ident($count: literal, $inner: ty) => [$($into: ty),*]),*
     ) => {
@@ -144,7 +250,69 @@ macro_rules! new_types {
     };
 }
 
-new_types!(
+new_signed_types!(
+    i2  (2, u8, i8)   => [i8, i16, i32, i64, i128],
+    i3  (3, u8, i8)   => [i8, i16, i32, i64, i128],
+    i4  (4, u8, i8)   => [i8, i16, i32, i64, i128],
+    i5  (5, u8, i8)   => [i8, i16, i32, i64, i128],
+    i6  (6, u8, i8)   => [i8, i16, i32, i64, i128],
+    i7  (7, u8, i8)   => [i8, i16, i32, i64, i128],
+    i9  (9, u16, i16)  => [i16, i32, i64, i128],
+    i10 (10, u16, i16) => [i16, i32, i64, i128],
+    i11 (11, u16, i16) => [i16, i32, i64, i128],
+    i12 (12, u16, i16) => [i16, i32, i64, i128],
+    i13 (13, u16, i16) => [i16, i32, i64, i128],
+    i14 (14, u16, i16) => [i16, i32, i64, i128],
+    i15 (15, u16, i16) => [i16, i32, i64, i128],
+    i17 (17, u32, i32) => [i32, i64, i128],
+    i18 (18, u32, i32) => [i32, i64, i128],
+    i19 (19, u32, i32) => [i32, i64, i128],
+    i20 (20, u32, i32) => [i32, i64, i128],
+    i21 (21, u32, i32) => [i32, i64, i128],
+    i22 (22, u32, i32) => [i32, i64, i128],
+    i23 (23, u32, i32) => [i32, i64, i128],
+    i24 (24, u32, i32) => [i32, i64, i128],
+    i25 (25, u32, i32) => [i32, i64, i128],
+    i26 (26, u32, i32) => [i32, i64, i128],
+    i27 (27, u32, i32) => [i32, i64, i128],
+    i28 (28, u32, i32) => [i32, i64, i128],
+    i29 (29, u32, i32) => [i32, i64, i128],
+    i30 (30, u32, i32) => [i32, i64, i128],
+    i31 (31, u32, i32) => [i32, i64, i128],
+    i33 (33, u64, i64) => [i64, i128],
+    i34 (34, u64, i64) => [i64, i128],
+    i35 (35, u64, i64) => [i64, i128],
+    i36 (36, u64, i64) => [i64, i128],
+    i37 (37, u64, i64) => [i64, i128],
+    i38 (38, u64, i64) => [i64, i128],
+    i39 (39, u64, i64) => [i64, i128],
+    i40 (40, u64, i64) => [i64, i128],
+    i41 (41, u64, i64) => [i64, i128],
+    i42 (42, u64, i64) => [i64, i128],
+    i43 (43, u64, i64) => [i64, i128],
+    i44 (44, u64, i64) => [i64, i128],
+    i45 (45, u64, i64) => [i64, i128],
+    i46 (46, u64, i64) => [i64, i128],
+    i47 (47, u64, i64) => [i64, i128],
+    i48 (48, u64, i64) => [i64, i128],
+    i49 (49, u64, i64) => [i64, i128],
+    i50 (50, u64, i64) => [i64, i128],
+    i51 (51, u64, i64) => [i64, i128],
+    i52 (52, u64, i64) => [i64, i128],
+    i53 (53, u64, i64) => [i64, i128],
+    i54 (54, u64, i64) => [i64, i128],
+    i55 (55, u64, i64) => [i64, i128],
+    i56 (56, u64, i64) => [i64, i128],
+    i57 (57, u64, i64) => [i64, i128],
+    i58 (58, u64, i64) => [i64, i128],
+    i59 (59, u64, i64) => [i64, i128],
+    i60 (60, u64, i64) => [i64, i128],
+    i61 (61, u64, i64) => [i64, i128],
+    i62 (62, u64, i64) => [i64, i128],
+    i63 (63, u64, i64) => [i64, i128]
+);
+
+new_unsigned_types!(
     u1  (1, u8)   => [u8, u16, u32, u64, u128],
     u2  (2, u8)   => [u8, u16, u32, u64, u128],
     u3  (3, u8)   => [u8, u16, u32, u64, u128],
