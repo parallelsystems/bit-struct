@@ -30,6 +30,28 @@ bit_struct!(
 );
 
 #[test]
+fn test_round_trip_bytes() {
+    {
+        let num = u24!(0x04D3);
+
+        let bytes = num.to_be_bytes();
+        assert_eq!(bytes, [0x0, 0x4, 0xD3]);
+
+        let num_cloned = u24::from_be_bytes(bytes);
+
+        assert_eq!(num, num_cloned);
+    }
+
+    {
+        let num = u24!(1235);
+        let bytes = num.to_le_bytes();
+        let num_cloned = u24::from_le_bytes(bytes);
+
+        assert_eq!(num, num_cloned);
+    }
+}
+
+#[test]
 fn test_non_core_base() {
     let mut non_core_base = NonCoreBase::new(123, 67);
 

@@ -617,14 +617,15 @@ macro_rules! byte_from_impls {
         impl $kind {
             const ARR_SIZE: usize = <$kind>::COUNT / 8;
             const SUPER_BYTES: usize = core::mem::size_of::<$super_kind>();
-            pub fn from_le_bytes(bytes: [u8; Self::ARR_SIZE]) {
-                let mut empty = [0_u8; Self::SUPER_BYTES];
-                for (set, &get) in empty.iter_mut().rev().zip(bytes.iter().rev()) {
+            pub fn from_be_bytes(bytes: [u8; Self::ARR_SIZE]) -> Self {
+                let mut res_bytes = [0_u8; Self::SUPER_BYTES];
+                for (set, &get) in res_bytes.iter_mut().rev().zip(bytes.iter().rev()) {
                     *set = get;
                 }
+                Self(<$super_kind>::from_be_bytes(res_bytes))
             }
 
-            pub fn to_le_bytes(self) -> [u8; Self::ARR_SIZE] {
+            pub fn to_be_bytes(self) -> [u8; Self::ARR_SIZE] {
                 let mut res = [0; Self::ARR_SIZE];
                 let inner_bytes = self.0.to_be_bytes();
                 for (&get, set) in inner_bytes.iter().rev().zip(res.iter_mut().rev()) {
@@ -633,16 +634,17 @@ macro_rules! byte_from_impls {
                 res
             }
 
-            pub fn from_be_bytes(bytes: [u8; Self::ARR_SIZE]) {
-                let mut empty = [0_u8; Self::SUPER_BYTES];
-                for (set, &get) in empty.iter_mut().zip(bytes.iter()) {
+            pub fn from_le_bytes(bytes: [u8; Self::ARR_SIZE]) -> Self {
+                let mut res_bytes = [0_u8; Self::SUPER_BYTES];
+                for (set, &get) in res_bytes.iter_mut().zip(bytes.iter()) {
                     *set = get;
                 }
+                Self(<$super_kind>::from_le_bytes(res_bytes))
             }
 
-            pub fn to_be_bytes(self) -> [u8; Self::ARR_SIZE] {
+            pub fn to_le_bytes(self) -> [u8; Self::ARR_SIZE] {
                 let mut res = [0; Self::ARR_SIZE];
-                let inner_bytes = self.0.to_be_bytes();
+                let inner_bytes = self.0.to_le_bytes();
                 for (&get, set) in inner_bytes.iter().zip(res.iter_mut()) {
                     *set = get;
                 }
