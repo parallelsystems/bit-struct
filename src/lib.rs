@@ -90,7 +90,9 @@ bit_counts!(u8 = 8, u16 = 16, u32 = 32, u64 = 64, u128 = 128, bool = 1);
 macro_rules! always_valid {
     ($($elem: ty),*) => {
         $(
-        unsafe impl <P> ValidCheck<P> for $elem {}
+        unsafe impl <P> ValidCheck<P> for $elem {
+            const ALWAYS_VALID: bool = true;
+        }
         )*
     };
 }
@@ -704,6 +706,7 @@ impl<
 }
 
 pub unsafe trait ValidCheck<P> {
+    const ALWAYS_VALID: bool = false;
     fn is_valid(_input: P) -> bool {
         true
     }
@@ -782,6 +785,21 @@ impl<
 
         let to_set = value & mask;
         *self.parent |= to_set << START;
+    }
+}
+
+pub trait BitStruct<const ALWAYS_VALID: bool> {
+    type Kind;
+    unsafe fn from_unchecked(value: Self::Kind) -> Self;
+}
+
+pub trait BitStructExt: BitStruct<true> {
+    fn exact_from(value: Self::Kind) -> Self;
+}
+
+impl<T: BitStruct<true>> BitStructExt for T {
+    fn exact_from(value: Self::Kind) -> Self {
+        unsafe { Self::from_unchecked(value) }
     }
 }
 
@@ -1002,9 +1020,17 @@ macro_rules! bit_struct {
             }
         }
 
+        impl bit_struct::BitStruct<{$(<$actual as bit_struct::ValidCheck<$kind>>::ALWAYS_VALID &&)* true}> for $name {
+            type Kind = $kind;
+
+            unsafe fn from_unchecked(inner: $kind) -> Self {
+               Self(bit_struct::UnsafeStorage::new_unsafe(inner))
+            }
+        }
+        
         impl $name {
 
-            pub unsafe fn from_unchecked(inner: $kind) -> Self {
+            unsafe fn from_unchecked(inner: $kind) -> Self {
                Self(bit_struct::UnsafeStorage::new_unsafe(inner))
             }
 
