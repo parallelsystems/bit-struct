@@ -95,7 +95,7 @@ macro_rules! always_valid {
     };
 }
 
-always_valid!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
+always_valid!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, bool);
 
 impl u1 {
     pub const TRUE: u1 = u1(1);

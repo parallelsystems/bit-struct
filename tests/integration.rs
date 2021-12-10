@@ -27,7 +27,33 @@ bit_struct!(
         count: u16,
         next: u8,
     }
+
+    struct Bools(u24){
+        flag_a: bool,
+        flag_b: bool,
+    }
 );
+
+#[test]
+fn test_bools() {
+    let mut bools = Bools::of_defaults();
+    assert_eq!(bools.flag_a().get(), false);
+    assert_eq!(bools.flag_b().get(), false);
+
+    bools.flag_a().set(true);
+    assert_eq!(bools.flag_a().get(), true);
+    assert_eq!(bools.flag_b().get(), false);
+
+    bools.flag_a().set(false);
+    bools.flag_b().set(true);
+    assert_eq!(bools.flag_a().get(), false);
+    assert_eq!(bools.flag_b().get(), true);
+
+    bools.flag_a().set(true);
+    bools.flag_b().set(true);
+    assert_eq!(bools.flag_a().get(), true);
+    assert_eq!(bools.flag_b().get(), true);
+}
 
 #[test]
 fn test_round_trip_bytes() {
