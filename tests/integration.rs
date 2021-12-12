@@ -1,4 +1,9 @@
+use std::cmp::Ordering;
+use num_traits::{Bounded, Num, One, Zero};
 use bit_struct::*;
+
+#[macro_use]
+extern crate matches;
 
 enums!(
     /// A doc comment
@@ -25,7 +30,8 @@ bit_struct!(
 
     struct NonCoreBase(u24){
         count: u16,
-        next: u8,
+        next: u6,
+        mode: ModeA,
     }
 
     struct Bools(u24){
@@ -82,17 +88,38 @@ fn test_round_trip_bytes() {
 
         assert_eq!(num, num_cloned);
     }
+
+    for i in 0..10{
+        let res = u24::from(i).value() as u8;
+        assert_eq!(i, res);
+    }
+}
+
+#[test]
+fn test_invalid(){
+    assert!(ModeA::is_valid(0_u8));
+    assert!(ModeA::is_valid(1_u8));
+    assert!(ModeA::is_valid(2_u8));
+    assert!(!ModeA::is_valid(3_u8));
+
+    assert!(ModeD::is_valid(0_u8));
+    assert!(ModeD::is_valid(1_u8));
+    assert!(ModeD::is_valid(2_u8));
+    assert!(!ModeD::is_valid(3_u8));
 }
 
 #[test]
 fn test_non_core_base() {
-    let mut non_core_base = NonCoreBase::new(123, 67);
+    let mut non_core_base = NonCoreBase::new(123, u6!(13), ModeA::One);
 
     let count = non_core_base.count().get();
     assert_eq!(count, 123);
 
     let next = non_core_base.next().get();
-    assert_eq!(next, 67);
+    assert_eq!(next.value(), 13);
+
+    let mode = non_core_base.mode().get();
+    assert_eq!(mode, ModeA::One);
 
     let raw = non_core_base.raw();
 
@@ -134,6 +161,51 @@ fn test_enum_intos() {
 
     intos!(ModeA, u8, u16, u32, u64, u128);
     intos!(ModeD, u8, u16, u32, u64, u128);
+}
+
+#[test]
+fn test_ord(){
+    for a in -0xFF..0xFF {
+        for b in -0xFF..0xFF {
+            let a_i9= i9::new(a).unwrap();
+            let b_i9= i9::new(b).unwrap();
+            if a < b {
+                assert!(a_i9 < b_i9);
+                assert_eq!(a_i9.cmp(&b_i9), Ordering::Less);
+
+                assert!(b_i9 > a_i9);
+                assert_eq!(b_i9.cmp(&a_i9), Ordering::Greater);
+            }
+            if a > b {
+                assert!(a_i9 > b_i9);
+                assert_eq!(a_i9.cmp(&b_i9), Ordering::Greater);
+
+                assert!(b_i9 < a_i9);
+                assert_eq!(b_i9.cmp(&a_i9), Ordering::Less);
+            }
+            if a <= b {
+                assert!(a_i9 <= b_i9);
+                assert_matches!(a_i9.cmp(&b_i9), Ordering::Less | Ordering::Equal);
+
+                assert!(b_i9 >= a_i9);
+                assert_matches!(b_i9.cmp(&a_i9), Ordering::Greater | Ordering::Equal);
+            }
+            if a >= b {
+                assert!(a_i9 >= b_i9);
+                assert_matches!(a_i9.cmp(&b_i9), Ordering::Greater | Ordering::Equal);
+
+                assert!(b_i9 <= a_i9);
+                assert_matches!(b_i9.cmp(&a_i9), Ordering::Less | Ordering::Equal);
+            }
+            if a == b {
+                assert_eq!(a_i9, b_i9);
+                assert_matches!(a_i9.cmp(&b_i9), Ordering::Equal);
+
+                assert_eq!(b_i9, a_i9);
+                assert_matches!(b_i9.cmp(&a_i9), Ordering::Equal);
+            }
+        }
+    }
 }
 
 #[test]
@@ -184,17 +256,21 @@ fn test_bit_struct_raw_values() {
 #[test]
 fn test_new_signed_types() {
     assert_eq!(i2::MAX, 1);
+    assert_eq!(i2::max_value(), i2!(1));
+
     assert_eq!(i2::MIN, -2);
+    assert_eq!(i2::min_value(), i2!(-2));
 
     assert_eq!(i2!(-2).inner_raw(), 0b10);
     assert_eq!(i2!(-1).inner_raw(), 0b11);
     assert_eq!(i2!(0).inner_raw(), 0b00);
     assert_eq!(i2!(1).inner_raw(), 0b01);
 
-    assert_eq!(i2!(-2).signed(), -2);
-    assert_eq!(i2!(-1).signed(), -1);
-    assert_eq!(i2!(0).signed(), 0);
-    assert_eq!(i2!(1).signed(), 1);
+    assert_eq!(i2!(-2).value(), -2);
+    assert_eq!(i2!(-1).value(), -1);
+    assert_eq!(i2!(0).value(), 0);
+    assert_eq!(i2!(1).value(), 1);
+
 
     assert_eq!(i3!(-4).inner_raw(), 0b100);
     assert_eq!(i3!(-3).inner_raw(), 0b101);
@@ -224,33 +300,118 @@ fn test_new_signed_types() {
     assert!(i3::new(2).is_some());
     assert!(i3::new(3).is_some());
     assert!(i3::new(4).is_none());
+
+    assert_eq!(i2::default().value(),0);
+    assert_eq!(i3::default().value(),0);
+    assert_eq!(i4::default().value(),0);
+}
+
+fn all_i9s() -> impl Iterator<Item=i9>{
+    (-0xFF..0xFF).filter_map(i9::new)
+}
+
+fn some_i9s() -> impl Iterator<Item=i9>{
+    (-0xD..0xD).filter_map(i9::new)
+}
+
+#[test]
+fn test_num_trait(){
+    macro_rules! eq {
+        ($a: expr, $b: expr) => {
+            assert_eq!($a, $b.value());
+        };
+    }
+
+    macro_rules! eq_assign {
+        ($operation: ident, $a1: expr, $b1: expr, $a2: expr, $b2: expr) => {
+            let mut temp1 = $a1;
+            temp1.$operation($b1);
+
+            let mut temp2 = $a2;
+            temp2.$operation($b2);
+
+            assert_eq!(temp1, temp2.value());
+        };
+    }
+
+    assert!(i4::default().is_zero());
+    assert!(!i4!(1).is_zero());
+
+    assert!(i4!(1).is_one());
+    assert!(u4!(1).is_one());
+    assert!(!i4!(3).is_one());
+    assert!(!u4!(0).is_one());
+
+    assert!(u4::default().is_zero());
+
+    use core::ops::*;
+
+    for num in some_i9s() {
+        for shift in 0..=2 {
+            let actual = num.value();
+            eq_assign!(shl_assign, actual, shift, num, shift);
+            eq_assign!(shr_assign, actual, shift, num, shift);
+        }
+    }
+
+    for num in all_i9s() {
+        let actual = num.value();
+        let from = format!("{}", actual);
+        let a = i16::from_str_radix(&from, 10);
+        let b = i9::from_str_radix(&from, 10);
+        eq!(a.unwrap(), b.unwrap());
+    }
+
+    for (a,b) in some_i9s().zip(some_i9s()) {
+
+        let actual_a = a.value();
+        let actual_b = b.value();
+
+        eq!(actual_a - actual_b, a - b);
+        eq!(actual_a + actual_b, a + b);
+        eq!(actual_a * actual_b, a * b);
+
+        if !b.is_zero()  {
+            eq!(actual_a / actual_b, a / b);
+            eq!(actual_a % actual_b, a % b);
+        }
+
+        eq!(actual_a | actual_b, a | b);
+        eq!(actual_a & actual_b, a & b);
+        eq!(actual_a ^ actual_b, a ^ b);
+        eq!(actual_a ^ actual_b, a ^ b);
+
+        eq_assign!(bitand_assign, actual_a, actual_b, a, b);
+    }
+}
+
+#[test]
+fn test_signed_types_formatting(){
+    for elem in all_i9s() {
+        let actual = elem.value();
+        assert_eq!(format!("{:?}", elem), format!("{:?}", actual));
+        assert_eq!(format!("{}", elem), format!("{}", actual));
+    }
 }
 
 #[test]
 fn test_new_unsigned_types() {
-    assert_eq!(u1!(0).inner(), 0b0);
-    assert_eq!(u1!(1).inner(), 0b1);
+    assert_eq!(u1!(0).value(), 0b0);
+    assert_eq!(u1!(1).value(), 0b1);
 
-    assert_eq!(u8::from(u1!(0)), 0b0);
-    assert_eq!(u8::from(u1!(1)), 0b1);
-    assert_eq!(u32::from(u1!(0)), 0b0);
-    assert_eq!(u32::from(u1!(1)), 0b1);
-    assert_eq!(u128::from(u1!(0)), 0b0);
-    assert_eq!(u128::from(u1!(1)), 0b1);
+    assert_eq!(u1::new(0b0_u8).unwrap().value(), 0);
+    assert_eq!(u1::new(0b1_u8).unwrap().value(), 1);
+    assert!(u1::new(0b11_u8).is_none());
 
-    assert_eq!(u1::try_from(0b0_u8).unwrap().inner(), 0);
-    assert_eq!(u1::try_from(0b1_u8).unwrap().inner(), 1);
-    assert!(u1::try_from(0b11_u8).is_err());
-
-    assert_eq!(u2!(0).inner(), 0b00);
-    assert_eq!(u2!(1).inner(), 0b01);
-    assert_eq!(u2!(2).inner(), 0b10);
-    assert_eq!(u2!(3).inner(), 0b11);
-    assert_eq!(u2::try_from(0b0_u8).unwrap().inner(), 0);
-    assert_eq!(u2::try_from(0b1_u8).unwrap().inner(), 1);
-    assert_eq!(u2::try_from(0b10_u8).unwrap().inner(), 2);
-    assert_eq!(u2::try_from(0b11_u8).unwrap().inner(), 3);
-    assert!(u2::try_from(0b100_u8).is_err());
+    assert_eq!(u2!(0).value(), 0b00);
+    assert_eq!(u2!(1).value(), 0b01);
+    assert_eq!(u2!(2).value(), 0b10);
+    assert_eq!(u2!(3).value(), 0b11);
+    assert_eq!(u2::new(0b0_u8).unwrap().value(), 0);
+    assert_eq!(u2::new(0b1_u8).unwrap().value(), 1);
+    assert_eq!(u2::new(0b10_u8).unwrap().value(), 2);
+    assert_eq!(u2::new(0b11_u8).unwrap().value(), 3);
+    assert!(u2::new(0b100_u8).is_none());
 
     assert_eq!(format!("{}", u1!(0)), "0");
     assert_eq!(format!("{}", u1!(1)), "1");
@@ -315,8 +476,8 @@ fn test_bit_struct_creation() {
     assert_eq!(abc.count().get(), u2!(0b11));
 }
 
-// #[test]
-// fn fails() {
-//     let t = trybuild::TestCases::new();
-//     t.compile_fail("tests/compile/*.rs");
-// }
+#[test]
+fn fails() {
+    let t = trybuild::TestCases::new();
+    t.compile_fail("tests/compile/*.rs");
+}

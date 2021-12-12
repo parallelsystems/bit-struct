@@ -7,32 +7,36 @@ use core::{
     fmt::{Debug, Display, Formatter},
     marker::PhantomData,
     ops::{
-        Add, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Deref, DerefMut, Div,
+        Add, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div,
         Mul, Rem, Shl, ShlAssign, Shr, ShrAssign, Sub,
     },
 };
 use num_traits::{Bounded, Num, One, Zero};
 
+/// [UnsafeStorage] is used to mark that there are some arbitrary invariants which must
+/// be maintained in storing its inner value. Therefore, creation and modifying of the
+/// inner value is an "unsafe" behavior. Although it might not be unsafe in traditional
+/// Rust terms (no memory unsafety), behavior might be "undefined"—or at least undocumented,
+/// because invariants are expected to be upheld.
+///
+/// This is useful in macros which do not encapsulate their storage in modules. This makes
+/// the macros for the end-user more ergonomic, as they can use the macro multiple times in
+/// a single module.
 #[repr(transparent)]
 #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord, Hash, Default)]
 pub struct UnsafeStorage<T>(T);
 
 impl<T> UnsafeStorage<T> {
-    pub fn new_unsafe(inner: T) -> Self {
+    /// # Safety
+    /// - See the broader scope that this is called in and which invariants are mentioned
+    pub unsafe fn new_unsafe(inner: T) -> Self {
         Self(inner)
     }
-}
 
-impl<T> Deref for UnsafeStorage<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> DerefMut for UnsafeStorage<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
+    /// # Safety
+    /// This should be a safe operation assuming that when modifying T to T',
+    /// UnsafeStorage::new_unsafe(T') is safe
+    pub unsafe fn as_ref_mut(&mut self) -> &mut T {
         &mut self.0
     }
 }
@@ -113,7 +117,7 @@ impl u1 {
 
 macro_rules! new_signed_types {
     (
-        $($name: ident($count: literal, $inner: ty, $signed: ty) => [$($into: ty),*]),*
+        $($name: ident($count: literal, $inner: ty, $signed: ty)),*
     ) => {
         $(
 
@@ -125,25 +129,25 @@ macro_rules! new_signed_types {
 
         impl PartialOrd for $name {
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-                self.signed().partial_cmp(&other.signed())
+                self.value().partial_cmp(&other.value())
             }
         }
 
         impl Ord for $name {
             fn cmp(&self, other: &Self) -> Ordering {
-                self.signed().cmp(&other.signed())
+                self.value().cmp(&other.value())
             }
         }
 
         impl Debug for $name {
             fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-                f.write_fmt(format_args!("{}", self.0))
+                f.write_fmt(format_args!("{}", self.value()))
             }
         }
 
         impl Display for $name {
             fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-                f.write_fmt(format_args!("{}", self.0))
+                f.write_fmt(format_args!("{}", self.value()))
             }
         }
 
@@ -203,7 +207,7 @@ macro_rules! new_signed_types {
             pub const MAX: $signed = Self::MAX_UNSIGNED as $signed;
             pub const MIN: $signed = -(Self::MAX_UNSIGNED as $signed) - 1;
 
-            pub fn signed(self) -> $signed {
+            pub fn value(self) -> $signed {
                 match self.0 >> ($count - 1) {
                     0 => self.0 as $signed,
                     _ => {
@@ -221,26 +225,6 @@ macro_rules! new_signed_types {
                 Self(0)
             }
         }
-
-        $(
-            impl From<$name> for $into {
-                fn from(name: $name) -> $into {
-                    name.0 as $into
-                }
-            }
-
-            impl TryFrom<$into> for $name {
-                type Error = ();
-
-                fn try_from(inner: $into) -> Result<$name, ()>{
-                   if inner > (Self::MAX as $into) || inner < (Self::MIN as $into) {
-                       Err(())
-                   }  else {
-                       Ok(unsafe {$name::new_unchecked(inner as $signed)})
-                   }
-                }
-            }
-        )*
         )*
     };
 }
@@ -261,7 +245,7 @@ macro_rules! num_traits {
             type Output = Self;
 
             fn add(self, rhs: Self) -> Self::Output {
-                $num(self.0 + rhs.0)
+                $num::new(self.value() + rhs.value()).unwrap()
             }
         }
 
@@ -275,7 +259,7 @@ macro_rules! num_traits {
             type Output = Self;
 
             fn mul(self, rhs: Self) -> Self::Output {
-                $num(self.0 * rhs.0)
+                $num::new(self.value() * rhs.value()).unwrap()
             }
         }
 
@@ -283,7 +267,7 @@ macro_rules! num_traits {
             type Output = $num;
 
             fn sub(self, rhs: Self) -> Self::Output {
-                $num(self.0 - rhs.0)
+                $num::new(self.value() - rhs.value()).unwrap()
             }
         }
 
@@ -291,7 +275,7 @@ macro_rules! num_traits {
             type Output = Self;
 
             fn div(self, rhs: Self) -> Self::Output {
-                $num(self.0 / rhs.0)
+                $num::new(self.value() / rhs.value()).unwrap()
             }
         }
 
@@ -299,7 +283,7 @@ macro_rules! num_traits {
             type Output = Self;
 
             fn rem(self, rhs: Self) -> Self::Output {
-                $num(self.0 % rhs.0)
+                $num::new(self.value() % rhs.value()).unwrap()
             }
         }
 
@@ -316,7 +300,7 @@ macro_rules! num_traits {
             type Output = $num;
 
             fn shr(self, rhs: usize) -> Self::Output {
-                $num(self.0 >> rhs)
+                $num::new(self.value() >> rhs).unwrap()
             }
         }
 
@@ -324,19 +308,21 @@ macro_rules! num_traits {
             type Output = $num;
 
             fn shl(self, rhs: usize) -> Self::Output {
-                $num(self.0 << rhs)
+                $num::new(self.value() << rhs).unwrap()
             }
         }
 
         impl ShrAssign<usize> for $num {
             fn shr_assign(&mut self, rhs: usize) {
-                self.0 >>= rhs
+                let got = *self >> rhs;
+                *self = got;
             }
         }
 
         impl ShlAssign<usize> for $num {
             fn shl_assign(&mut self, rhs: usize) {
-                self.0 <<= rhs
+                let got = *self << rhs;
+                *self = got;
             }
         }
 
@@ -396,7 +382,7 @@ macro_rules! num_traits {
 
 macro_rules! new_unsigned_types {
     (
-        $($name: ident($count: literal, $inner: ty) => [$($into: ty),*]),*
+        $($name: ident($count: literal, $inner: ty)),*
     ) => {
         $(
 
@@ -449,10 +435,14 @@ macro_rules! new_unsigned_types {
             }
 
             pub fn new(value: $inner) -> Option<Self> {
-                Self::try_from(value).ok()
+                if value >= Self::MIN && value <= Self::MAX {
+                    Some(unsafe {Self::new_unchecked(value)})
+                } else {
+                    None
+                }
             }
 
-            pub fn inner(self) -> $inner {
+            pub fn value(self) -> $inner {
                 self.0
             }
         }
@@ -464,153 +454,133 @@ macro_rules! new_unsigned_types {
         }
 
         num_traits!($name, $inner);
-
-        $(
-            impl From<$name> for $into {
-                fn from(name: $name) -> $into {
-                    name.0 as $into
-                }
-            }
-
-            impl TryFrom<$into> for $name {
-                type Error = ();
-
-                fn try_from(inner: $into) -> Result<$name, ()>{
-                   if inner >= (1 << $count) {
-                       Err(())
-                   }  else {
-                       Ok($name(inner as $inner))
-                   }
-                }
-            }
-        )*
         )*
     };
 }
 
 new_signed_types!(
-    i2  (2, u8, i8)   => [u8, u16, u32, u64, u128],
-    i3  (3, u8, i8)   => [u8, u16, u32, u64, u128],
-    i4  (4, u8, i8)   => [u8, u16, u32, u64, u128],
-    i5  (5, u8, i8)   => [u8, u16, u32, u64, u128],
-    i6  (6, u8, i8)   => [u8, u16, u32, u64, u128],
-    i7  (7, u8, i8)   => [u8, u16, u32, u64, u128],
-    i9  (9, u16, i16)  => [u16, u32, u64, u128],
-    i10 (10, u16, i16) => [u16, u32, u64, u128],
-    i11 (11, u16, i16) => [u16, u32, u64, u128],
-    i12 (12, u16, i16) => [u16, u32, u64, u128],
-    i13 (13, u16, i16) => [u16, u32, u64, u128],
-    i14 (14, u16, i16) => [u16, u32, u64, u128],
-    i15 (15, u16, i16) => [u16, u32, u64, u128],
-    i17 (17, u32, i32) => [u32, u64, u128],
-    i18 (18, u32, i32) => [u32, u64, u128],
-    i19 (19, u32, i32) => [u32, u64, u128],
-    i20 (20, u32, i32) => [u32, u64, u128],
-    i21 (21, u32, i32) => [u32, u64, u128],
-    i22 (22, u32, i32) => [u32, u64, u128],
-    i23 (23, u32, i32) => [u32, u64, u128],
-    i24 (24, u32, i32) => [u32, u64, u128],
-    i25 (25, u32, i32) => [u32, u64, u128],
-    i26 (26, u32, i32) => [u32, u64, u128],
-    i27 (27, u32, i32) => [u32, u64, u128],
-    i28 (28, u32, i32) => [u32, u64, u128],
-    i29 (29, u32, i32) => [u32, u64, u128],
-    i30 (30, u32, i32) => [u32, u64, u128],
-    i31 (31, u32, i32) => [u32, u64, u128],
-    i33 (33, u64, i64) => [u64, u128],
-    i34 (34, u64, i64) => [u64, u128],
-    i35 (35, u64, i64) => [u64, u128],
-    i36 (36, u64, i64) => [u64, u128],
-    i37 (37, u64, i64) => [u64, u128],
-    i38 (38, u64, i64) => [u64, u128],
-    i39 (39, u64, i64) => [u64, u128],
-    i40 (40, u64, i64) => [u64, u128],
-    i41 (41, u64, i64) => [u64, u128],
-    i42 (42, u64, i64) => [u64, u128],
-    i43 (43, u64, i64) => [u64, u128],
-    i44 (44, u64, i64) => [u64, u128],
-    i45 (45, u64, i64) => [u64, u128],
-    i46 (46, u64, i64) => [u64, u128],
-    i47 (47, u64, i64) => [u64, u128],
-    i48 (48, u64, i64) => [u64, u128],
-    i49 (49, u64, i64) => [u64, u128],
-    i50 (50, u64, i64) => [u64, u128],
-    i51 (51, u64, i64) => [u64, u128],
-    i52 (52, u64, i64) => [u64, u128],
-    i53 (53, u64, i64) => [u64, u128],
-    i54 (54, u64, i64) => [u64, u128],
-    i55 (55, u64, i64) => [u64, u128],
-    i56 (56, u64, i64) => [u64, u128],
-    i57 (57, u64, i64) => [u64, u128],
-    i58 (58, u64, i64) => [u64, u128],
-    i59 (59, u64, i64) => [u64, u128],
-    i60 (60, u64, i64) => [u64, u128],
-    i61 (61, u64, i64) => [u64, u128],
-    i62 (62, u64, i64) => [u64, u128],
-    i63 (63, u64, i64) => [u64, u128]
+    i2  (2, u8, i8),
+    i3  (3, u8, i8),
+    i4  (4, u8, i8),
+    i5  (5, u8, i8),
+    i6  (6, u8, i8),
+    i7  (7, u8, i8),
+    i9  (9, u16, i16),
+    i10 (10, u16, i16),
+    i11 (11, u16, i16),
+    i12 (12, u16, i16),
+    i13 (13, u16, i16),
+    i14 (14, u16, i16),
+    i15 (15, u16, i16),
+    i17 (17, u32, i32),
+    i18 (18, u32, i32),
+    i19 (19, u32, i32),
+    i20 (20, u32, i32),
+    i21 (21, u32, i32),
+    i22 (22, u32, i32),
+    i23 (23, u32, i32),
+    i24 (24, u32, i32),
+    i25 (25, u32, i32),
+    i26 (26, u32, i32),
+    i27 (27, u32, i32),
+    i28 (28, u32, i32),
+    i29 (29, u32, i32),
+    i30 (30, u32, i32),
+    i31 (31, u32, i32),
+    i33 (33, u64, i64),
+    i34 (34, u64, i64),
+    i35 (35, u64, i64),
+    i36 (36, u64, i64),
+    i37 (37, u64, i64),
+    i38 (38, u64, i64),
+    i39 (39, u64, i64),
+    i40 (40, u64, i64),
+    i41 (41, u64, i64),
+    i42 (42, u64, i64),
+    i43 (43, u64, i64),
+    i44 (44, u64, i64),
+    i45 (45, u64, i64),
+    i46 (46, u64, i64),
+    i47 (47, u64, i64),
+    i48 (48, u64, i64),
+    i49 (49, u64, i64),
+    i50 (50, u64, i64),
+    i51 (51, u64, i64),
+    i52 (52, u64, i64),
+    i53 (53, u64, i64),
+    i54 (54, u64, i64),
+    i55 (55, u64, i64),
+    i56 (56, u64, i64),
+    i57 (57, u64, i64),
+    i58 (58, u64, i64),
+    i59 (59, u64, i64),
+    i60 (60, u64, i64),
+    i61 (61, u64, i64),
+    i62 (62, u64, i64),
+    i63 (63, u64, i64)
 );
 
 new_unsigned_types!(
-    u1  (1, u8)   => [u8, u16, u32, u64, u128],
-    u2  (2, u8)   => [u8, u16, u32, u64, u128],
-    u3  (3, u8)   => [u8, u16, u32, u64, u128],
-    u4  (4, u8)   => [u8, u16, u32, u64, u128],
-    u5  (5, u8)   => [u8, u16, u32, u64, u128],
-    u6  (6, u8)   => [u8, u16, u32, u64, u128],
-    u7  (7, u8)   => [u8, u16, u32, u64, u128],
-    u9  (9, u16)  => [u16, u32, u64, u128],
-    u10 (10, u16) => [u16, u32, u64, u128],
-    u11 (11, u16) => [u16, u32, u64, u128],
-    u12 (12, u16) => [u16, u32, u64, u128],
-    u13 (13, u16) => [u16, u32, u64, u128],
-    u14 (14, u16) => [u16, u32, u64, u128],
-    u15 (15, u16) => [u16, u32, u64, u128],
-    u17 (17, u32) => [u32, u64, u128],
-    u18 (18, u32) => [u32, u64, u128],
-    u19 (19, u32) => [u32, u64, u128],
-    u20 (20, u32) => [u32, u64, u128],
-    u21 (21, u32) => [u32, u64, u128],
-    u22 (22, u32) => [u32, u64, u128],
-    u23 (23, u32) => [u32, u64, u128],
-    u24 (24, u32) => [u32, u64, u128],
-    u25 (25, u32) => [u32, u64, u128],
-    u26 (26, u32) => [u32, u64, u128],
-    u27 (27, u32) => [u32, u64, u128],
-    u28 (28, u32) => [u32, u64, u128],
-    u29 (29, u32) => [u32, u64, u128],
-    u30 (30, u32) => [u32, u64, u128],
-    u31 (31, u32) => [u32, u64, u128],
-    u33 (33, u64) => [u64, u128],
-    u34 (34, u64) => [u64, u128],
-    u35 (35, u64) => [u64, u128],
-    u36 (36, u64) => [u64, u128],
-    u37 (37, u64) => [u64, u128],
-    u38 (38, u64) => [u64, u128],
-    u39 (39, u64) => [u64, u128],
-    u40 (40, u64) => [u64, u128],
-    u41 (41, u64) => [u64, u128],
-    u42 (42, u64) => [u64, u128],
-    u43 (43, u64) => [u64, u128],
-    u44 (44, u64) => [u64, u128],
-    u45 (45, u64) => [u64, u128],
-    u46 (46, u64) => [u64, u128],
-    u47 (47, u64) => [u64, u128],
-    u48 (48, u64) => [u64, u128],
-    u49 (49, u64) => [u64, u128],
-    u50 (50, u64) => [u64, u128],
-    u51 (51, u64) => [u64, u128],
-    u52 (52, u64) => [u64, u128],
-    u53 (53, u64) => [u64, u128],
-    u54 (54, u64) => [u64, u128],
-    u55 (55, u64) => [u64, u128],
-    u56 (56, u64) => [u64, u128],
-    u57 (57, u64) => [u64, u128],
-    u58 (58, u64) => [u64, u128],
-    u59 (59, u64) => [u64, u128],
-    u60 (60, u64) => [u64, u128],
-    u61 (61, u64) => [u64, u128],
-    u62 (62, u64) => [u64, u128],
-    u63 (63, u64) => [u64, u128]
+    u1  (1, u8),
+    u2  (2, u8),
+    u3  (3, u8),
+    u4  (4, u8),
+    u5  (5, u8),
+    u6  (6, u8),
+    u7  (7, u8),
+    u9  (9, u16),
+    u10 (10, u16),
+    u11 (11, u16),
+    u12 (12, u16),
+    u13 (13, u16),
+    u14 (14, u16),
+    u15 (15, u16),
+    u17 (17, u32),
+    u18 (18, u32),
+    u19 (19, u32),
+    u20 (20, u32),
+    u21 (21, u32),
+    u22 (22, u32),
+    u23 (23, u32),
+    u24 (24, u32),
+    u25 (25, u32),
+    u26 (26, u32),
+    u27 (27, u32),
+    u28 (28, u32),
+    u29 (29, u32),
+    u30 (30, u32),
+    u31 (31, u32),
+    u33 (33, u64),
+    u34 (34, u64),
+    u35 (35, u64),
+    u36 (36, u64),
+    u37 (37, u64),
+    u38 (38, u64),
+    u39 (39, u64),
+    u40 (40, u64),
+    u41 (41, u64),
+    u42 (42, u64),
+    u43 (43, u64),
+    u44 (44, u64),
+    u45 (45, u64),
+    u46 (46, u64),
+    u47 (47, u64),
+    u48 (48, u64),
+    u49 (49, u64),
+    u50 (50, u64),
+    u51 (51, u64),
+    u52 (52, u64),
+    u53 (53, u64),
+    u54 (54, u64),
+    u55 (55, u64),
+    u56 (56, u64),
+    u57 (57, u64),
+    u58 (58, u64),
+    u59 (59, u64),
+    u60 (60, u64),
+    u61 (61, u64),
+    u62 (62, u64),
+    u63 (63, u64)
 );
 
 macro_rules! byte_from_impls {
@@ -810,7 +780,7 @@ macro_rules! impl_fields {
     [$($first_field_doc: expr),*], $head_field: ident, $head_actual: ty $(, [$($field_doc: expr),*], $field: ident, $actual: ty)*) => {
         $(#[doc=$first_field_doc])*
         pub fn $head_field(&mut self) -> bit_struct::GetSet<'_, $kind, $head_actual, {$on - <$head_actual as bit_struct::BitCount>::COUNT}, {$on - 1}> {
-            bit_struct::GetSet::new(&mut self.0)
+            bit_struct::GetSet::new(unsafe {self.0.as_ref_mut()})
         }
 
         bit_struct::impl_fields!($on - <$head_actual as bit_struct::BitCount>::COUNT, $kind => $([$($field_doc),*], $field, $actual),*);
@@ -1024,14 +994,14 @@ macro_rules! bit_struct {
             type Kind = $kind;
 
             unsafe fn from_unchecked(inner: $kind) -> Self {
-               Self(bit_struct::UnsafeStorage::new_unsafe(inner))
+               Self(unsafe {bit_struct::UnsafeStorage::new_unsafe(inner)})
             }
         }
         
         impl $name {
 
             unsafe fn from_unchecked(inner: $kind) -> Self {
-               Self(bit_struct::UnsafeStorage::new_unsafe(inner))
+               Self(unsafe {bit_struct::UnsafeStorage::new_unsafe(inner)})
             }
 
             #[allow(clippy::too_many_arguments)]
@@ -1119,7 +1089,7 @@ macro_rules! enum_impl {
         unsafe impl bit_struct::ValidCheck<$kind> for $name {
 
             fn is_valid(value: $kind) -> bool {
-                let inner = value.inner();
+                let inner = value.value();
                 $name::is_valid(inner as u8)
             }
         }
