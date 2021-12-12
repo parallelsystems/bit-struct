@@ -1,3 +1,15 @@
+error[E0277]: the trait bound `EnumNoBits: ValidCheck<u16>` is not satisfied
+  --> tests/compile/incorrect_type.rs:6:1
+   |
+6  | / bit_struct::bit_struct! {
+7  | |     struct Incorrect(u16) {
+8  | |         a: EnumNoBits
+9  | |     }
+10 | | }
+   | |_^ the trait `ValidCheck<u16>` is not implemented for `EnumNoBits`
+   |
+   = note: this error originates in the macro `bit_struct::bit_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0277]: the trait bound `EnumNoBits: BitCount` is not satisfied
   --> tests/compile/incorrect_type.rs:6:1
    |
