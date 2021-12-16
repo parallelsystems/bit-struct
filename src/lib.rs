@@ -1077,17 +1077,23 @@ macro_rules! enum_impl {
     (VALID_CORE $name: ident: [$($kind: ty),*]) => {
         $(
         unsafe impl bit_struct::ValidCheck<$kind> for $name {
-
+            const ALWAYS_VALID: bool = <$name as bit_struct::ValidCheck<u8>>::ALWAYS_VALID;
             fn is_valid(value: $kind) -> bool {
                 $name::is_valid(value as u8)
             }
         }
         )*
     };
+    (COUNT $head:ident $(,$xs: ident)*) => {
+       1 + bit_struct::enum_impl!(COUNT $($xs),*)
+    };
+    (COUNT) => {
+        0
+    };
     (VALID_BIT_STRUCT $name: ident: [$($kind: ty),*]) => {
         $(
         unsafe impl bit_struct::ValidCheck<$kind> for $name {
-
+            const ALWAYS_VALID: bool = <$name as bit_struct::ValidCheck<u8>>::ALWAYS_VALID;
             fn is_valid(value: $kind) -> bool {
                 let inner = value.value();
                 $name::is_valid(inner as u8)
@@ -1130,10 +1136,14 @@ macro_rules! enum_impl {
             const COUNT: usize = bit_struct::bits(bit_struct::count_idents!(0, [$($field),*]));
         }
 
+        impl $name {
+            const VARIANT_COUNT: usize = bit_struct::enum_impl!(COUNT $fst_field $(,$field)*);
+        }
+
         unsafe impl bit_struct::ValidCheck<u8> for $name {
+            const ALWAYS_VALID: bool = Self::VARIANT_COUNT.count_ones() == 1;
             fn is_valid(value: u8) -> bool {
-                let variants = [$name::$fst_field, $($name::$field),*];
-                if (value as usize) < variants.len() {
+                if (value as usize) < Self::VARIANT_COUNT {
                     true
                 } else {
                     false
@@ -1183,15 +1193,20 @@ macro_rules! enum_impl {
             }
         }
 
+        impl $name {
+            const VARIANT_COUNT: usize = bit_struct::enum_impl!(COUNT $fst_field $(,$field)*);
+        }
+
         unsafe impl bit_struct::BitCount for $name {
             const COUNT: usize = bit_struct::bits(bit_struct::count_idents!(0, [$($field),*]));
         }
 
 
         unsafe impl bit_struct::ValidCheck<u8> for $name {
+            const ALWAYS_VALID: bool = Self::VARIANT_COUNT.count_ones() == 1;
+
             fn is_valid(value: u8) -> bool {
-                let variants = [$name::$fst_field, $($name::$field),*];
-                if (value as usize) < variants.len() {
+                if (value as usize) < Self::VARIANT_COUNT {
                     true
                 } else {
                     false

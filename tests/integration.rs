@@ -41,6 +41,14 @@ bit_struct!(
 );
 
 #[test]
+fn test_always_valid_enum(){
+    assert!(!<ModeA as ValidCheck<u8>>::ALWAYS_VALID);
+    assert!(!<ModeA as ValidCheck<u16>>::ALWAYS_VALID);
+    assert!(<OrderA as ValidCheck<u8>>::ALWAYS_VALID);
+    assert!(<OrderA as ValidCheck<u16>>::ALWAYS_VALID);
+}
+
+#[test]
 fn test_from(){
     let mut bools = Bools::exact_from(u24!(0xFF_00_00));
     assert!(bools.flag_a().get());

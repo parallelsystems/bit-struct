@@ -1,23 +1,59 @@
 error[E0277]: the trait bound `EnumNoBits: ValidCheck<u16>` is not satisfied
-  --> tests/compile/incorrect_type.rs:6:1
-   |
-6  | / bit_struct::bit_struct! {
-7  | |     struct Incorrect(u16) {
-8  | |         a: EnumNoBits
-9  | |     }
-10 | | }
-   | |_^ the trait `ValidCheck<u16>` is not implemented for `EnumNoBits`
-   |
-   = note: this error originates in the macro `bit_struct::bit_struct` (in Nightly builds, run with -Z macro-backtrace for more info)
+    --> src/lib.rs
+     |
+     | / macro_rules! bit_struct {
+     | |     (
+     | |         $(
+     | |         $(#[doc = $struct_doc:expr])*
+...    |
+     | |         impl bit_struct::BitStruct<{$(<$actual as bit_struct::ValidCheck<$kind>>::ALWAYS_VALID &&)* true}> for $name {
+     | |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `ValidCheck<u16>` is not implemented for `EnumNoBits`
+...    |
+     | |     };
+     | | }
+     | |_- in this expansion of `bit_struct::bit_struct!`
+     |
+    ::: tests/compile/incorrect_type.rs:6:1
+     |
+6    | / bit_struct::bit_struct! {
+7    | |     struct Incorrect(u16) {
+8    | |         a: EnumNoBits
+9    | |     }
+10   | | }
+     | |_- in this macro invocation
 
 error[E0277]: the trait bound `EnumNoBits: BitCount` is not satisfied
-  --> tests/compile/incorrect_type.rs:6:1
-   |
-6  | / bit_struct::bit_struct! {
-7  | |     struct Incorrect(u16) {
-8  | |         a: EnumNoBits
-9  | |     }
-10 | | }
-   | |_^ the trait `BitCount` is not implemented for `EnumNoBits`
-   |
-   = note: this error originates in the macro `bit_struct::impl_fields` (in Nightly builds, run with -Z macro-backtrace for more info)
+    --> src/lib.rs
+     |
+     | / macro_rules! impl_fields {
+     | |
+     | |     ($on: expr, $kind: ty =>
+     | |     [$($first_field_doc: expr),*], $head_field: ident, $head_actual: ty $(, [$($field_doc: expr),*], $field: ident, $actual: ty)*) => {
+     | |         $(#[doc=$first_field_doc])*
+     | |         pub fn $head_field(&mut self) -> bit_struct::GetSet<'_, $kind, $head_actual, {$on - <$head_actual as bit_struct::BitCount>::COUNT}, ...
+     | |                                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `BitCount` is not implemented for `EnumNoBits`
+...    |
+     | |     ($on: expr, $kind: ty =>) => {};
+     | | }
+     | |_- in this expansion of `bit_struct::impl_fields!` (#2)
+...
+     | / macro_rules! bit_struct {
+     | |     (
+     | |         $(
+     | |         $(#[doc = $struct_doc:expr])*
+...    |
+     | |             bit_struct::impl_fields!(<$kind as bit_struct::BitCount>::COUNT, $kind => $([$($field_doc),*], $field, $actual),*);
+     | |             ------------------------------------------------------------------------------------------------------------------ in this macro invocation (#2)
+...    |
+     | |     };
+     | | }
+     | |_- in this expansion of `bit_struct::bit_struct!` (#1)
+     |
+    ::: tests/compile/incorrect_type.rs:6:1
+     |
+6    | / bit_struct::bit_struct! {
+7    | |     struct Incorrect(u16) {
+8    | |         a: EnumNoBits
+9    | |     }
+10   | | }
+     | |_- in this macro invocation (#1)
