@@ -7,28 +7,30 @@ use core::{
     fmt::{Debug, Display, Formatter},
     marker::PhantomData,
     ops::{
-        Add, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div,
-        Mul, Rem, Shl, ShlAssign, Shr, ShrAssign, Sub,
+        Add, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, Mul, Rem, Shl,
+        ShlAssign, Shr, ShrAssign, Sub,
     },
 };
 use num_traits::{Bounded, Num, One, Zero};
 
-/// [UnsafeStorage] is used to mark that there are some arbitrary invariants which must
-/// be maintained in storing its inner value. Therefore, creation and modifying of the
-/// inner value is an "unsafe" behavior. Although it might not be unsafe in traditional
-/// Rust terms (no memory unsafety), behavior might be "undefined"—or at least undocumented,
-/// because invariants are expected to be upheld.
+/// [UnsafeStorage] is used to mark that there are some arbitrary invariants
+/// which must be maintained in storing its inner value. Therefore, creation and
+/// modifying of the inner value is an "unsafe" behavior. Although it might not
+/// be unsafe in traditional Rust terms (no memory unsafety), behavior might be
+/// "undefined"—or at least undocumented, because invariants are expected to be
+/// upheld.
 ///
-/// This is useful in macros which do not encapsulate their storage in modules. This makes
-/// the macros for the end-user more ergonomic, as they can use the macro multiple times in
-/// a single module.
+/// This is useful in macros which do not encapsulate their storage in modules.
+/// This makes the macros for the end-user more ergonomic, as they can use the
+/// macro multiple times in a single module.
 #[repr(transparent)]
 #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord, Hash, Default)]
 pub struct UnsafeStorage<T>(T);
 
 impl<T> UnsafeStorage<T> {
     /// # Safety
-    /// - See the broader scope that this is called in and which invariants are mentioned
+    /// - See the broader scope that this is called in and which invariants are
+    ///   mentioned
     pub unsafe fn new_unsafe(inner: T) -> Self {
         Self(inner)
     }
@@ -459,128 +461,128 @@ macro_rules! new_unsigned_types {
 }
 
 new_signed_types!(
-    i2  (2, u8, i8),
-    i3  (3, u8, i8),
-    i4  (4, u8, i8),
-    i5  (5, u8, i8),
-    i6  (6, u8, i8),
-    i7  (7, u8, i8),
-    i9  (9, u16, i16),
-    i10 (10, u16, i16),
-    i11 (11, u16, i16),
-    i12 (12, u16, i16),
-    i13 (13, u16, i16),
-    i14 (14, u16, i16),
-    i15 (15, u16, i16),
-    i17 (17, u32, i32),
-    i18 (18, u32, i32),
-    i19 (19, u32, i32),
-    i20 (20, u32, i32),
-    i21 (21, u32, i32),
-    i22 (22, u32, i32),
-    i23 (23, u32, i32),
-    i24 (24, u32, i32),
-    i25 (25, u32, i32),
-    i26 (26, u32, i32),
-    i27 (27, u32, i32),
-    i28 (28, u32, i32),
-    i29 (29, u32, i32),
-    i30 (30, u32, i32),
-    i31 (31, u32, i32),
-    i33 (33, u64, i64),
-    i34 (34, u64, i64),
-    i35 (35, u64, i64),
-    i36 (36, u64, i64),
-    i37 (37, u64, i64),
-    i38 (38, u64, i64),
-    i39 (39, u64, i64),
-    i40 (40, u64, i64),
-    i41 (41, u64, i64),
-    i42 (42, u64, i64),
-    i43 (43, u64, i64),
-    i44 (44, u64, i64),
-    i45 (45, u64, i64),
-    i46 (46, u64, i64),
-    i47 (47, u64, i64),
-    i48 (48, u64, i64),
-    i49 (49, u64, i64),
-    i50 (50, u64, i64),
-    i51 (51, u64, i64),
-    i52 (52, u64, i64),
-    i53 (53, u64, i64),
-    i54 (54, u64, i64),
-    i55 (55, u64, i64),
-    i56 (56, u64, i64),
-    i57 (57, u64, i64),
-    i58 (58, u64, i64),
-    i59 (59, u64, i64),
-    i60 (60, u64, i64),
-    i61 (61, u64, i64),
-    i62 (62, u64, i64),
-    i63 (63, u64, i64)
+    i2(2, u8, i8),
+    i3(3, u8, i8),
+    i4(4, u8, i8),
+    i5(5, u8, i8),
+    i6(6, u8, i8),
+    i7(7, u8, i8),
+    i9(9, u16, i16),
+    i10(10, u16, i16),
+    i11(11, u16, i16),
+    i12(12, u16, i16),
+    i13(13, u16, i16),
+    i14(14, u16, i16),
+    i15(15, u16, i16),
+    i17(17, u32, i32),
+    i18(18, u32, i32),
+    i19(19, u32, i32),
+    i20(20, u32, i32),
+    i21(21, u32, i32),
+    i22(22, u32, i32),
+    i23(23, u32, i32),
+    i24(24, u32, i32),
+    i25(25, u32, i32),
+    i26(26, u32, i32),
+    i27(27, u32, i32),
+    i28(28, u32, i32),
+    i29(29, u32, i32),
+    i30(30, u32, i32),
+    i31(31, u32, i32),
+    i33(33, u64, i64),
+    i34(34, u64, i64),
+    i35(35, u64, i64),
+    i36(36, u64, i64),
+    i37(37, u64, i64),
+    i38(38, u64, i64),
+    i39(39, u64, i64),
+    i40(40, u64, i64),
+    i41(41, u64, i64),
+    i42(42, u64, i64),
+    i43(43, u64, i64),
+    i44(44, u64, i64),
+    i45(45, u64, i64),
+    i46(46, u64, i64),
+    i47(47, u64, i64),
+    i48(48, u64, i64),
+    i49(49, u64, i64),
+    i50(50, u64, i64),
+    i51(51, u64, i64),
+    i52(52, u64, i64),
+    i53(53, u64, i64),
+    i54(54, u64, i64),
+    i55(55, u64, i64),
+    i56(56, u64, i64),
+    i57(57, u64, i64),
+    i58(58, u64, i64),
+    i59(59, u64, i64),
+    i60(60, u64, i64),
+    i61(61, u64, i64),
+    i62(62, u64, i64),
+    i63(63, u64, i64)
 );
 
 new_unsigned_types!(
-    u1  (1, u8),
-    u2  (2, u8),
-    u3  (3, u8),
-    u4  (4, u8),
-    u5  (5, u8),
-    u6  (6, u8),
-    u7  (7, u8),
-    u9  (9, u16),
-    u10 (10, u16),
-    u11 (11, u16),
-    u12 (12, u16),
-    u13 (13, u16),
-    u14 (14, u16),
-    u15 (15, u16),
-    u17 (17, u32),
-    u18 (18, u32),
-    u19 (19, u32),
-    u20 (20, u32),
-    u21 (21, u32),
-    u22 (22, u32),
-    u23 (23, u32),
-    u24 (24, u32),
-    u25 (25, u32),
-    u26 (26, u32),
-    u27 (27, u32),
-    u28 (28, u32),
-    u29 (29, u32),
-    u30 (30, u32),
-    u31 (31, u32),
-    u33 (33, u64),
-    u34 (34, u64),
-    u35 (35, u64),
-    u36 (36, u64),
-    u37 (37, u64),
-    u38 (38, u64),
-    u39 (39, u64),
-    u40 (40, u64),
-    u41 (41, u64),
-    u42 (42, u64),
-    u43 (43, u64),
-    u44 (44, u64),
-    u45 (45, u64),
-    u46 (46, u64),
-    u47 (47, u64),
-    u48 (48, u64),
-    u49 (49, u64),
-    u50 (50, u64),
-    u51 (51, u64),
-    u52 (52, u64),
-    u53 (53, u64),
-    u54 (54, u64),
-    u55 (55, u64),
-    u56 (56, u64),
-    u57 (57, u64),
-    u58 (58, u64),
-    u59 (59, u64),
-    u60 (60, u64),
-    u61 (61, u64),
-    u62 (62, u64),
-    u63 (63, u64)
+    u1(1, u8),
+    u2(2, u8),
+    u3(3, u8),
+    u4(4, u8),
+    u5(5, u8),
+    u6(6, u8),
+    u7(7, u8),
+    u9(9, u16),
+    u10(10, u16),
+    u11(11, u16),
+    u12(12, u16),
+    u13(13, u16),
+    u14(14, u16),
+    u15(15, u16),
+    u17(17, u32),
+    u18(18, u32),
+    u19(19, u32),
+    u20(20, u32),
+    u21(21, u32),
+    u22(22, u32),
+    u23(23, u32),
+    u24(24, u32),
+    u25(25, u32),
+    u26(26, u32),
+    u27(27, u32),
+    u28(28, u32),
+    u29(29, u32),
+    u30(30, u32),
+    u31(31, u32),
+    u33(33, u64),
+    u34(34, u64),
+    u35(35, u64),
+    u36(36, u64),
+    u37(37, u64),
+    u38(38, u64),
+    u39(39, u64),
+    u40(40, u64),
+    u41(41, u64),
+    u42(42, u64),
+    u43(43, u64),
+    u44(44, u64),
+    u45(45, u64),
+    u46(46, u64),
+    u47(47, u64),
+    u48(48, u64),
+    u49(49, u64),
+    u50(50, u64),
+    u51(51, u64),
+    u52(52, u64),
+    u53(53, u64),
+    u54(54, u64),
+    u55(55, u64),
+    u56(56, u64),
+    u57(57, u64),
+    u58(58, u64),
+    u59(59, u64),
+    u60(60, u64),
+    u61(61, u64),
+    u62(62, u64),
+    u63(63, u64)
 );
 
 macro_rules! byte_from_impls {
@@ -833,6 +835,11 @@ macro_rules! bit_struct_impl {
 
         impl $name {
 
+            /// Creates an empty struct. This may or may not be valid
+            pub unsafe fn empty() -> Self {
+                unsafe { Self::from_unchecked(<$kind as bit_struct::BitStructZero>::bs_zero()) }
+            }
+
             /// Returns a valid representation for the bit_struct, where all values are
             /// the defaults. This is different than Self::default(), because the actual
             /// default implementation might not be composed of only the defaults of the
@@ -997,7 +1004,7 @@ macro_rules! bit_struct {
                Self(unsafe {bit_struct::UnsafeStorage::new_unsafe(inner)})
             }
         }
-        
+
         impl $name {
 
             unsafe fn from_unchecked(inner: $kind) -> Self {
@@ -1251,4 +1258,22 @@ macro_rules! enums {
         );
         )+
     }
+}
+
+/// Create a bit_struct
+#[macro_export]
+macro_rules! create {
+    (
+        $struct_kind: ty {
+            $($field: ident: $value: expr),* $(,)?
+        }
+    ) => {
+        {
+            let mut res = <$struct_kind>::of_defaults();
+            $(
+                res.$field().set($value);
+            )*
+            res
+        }
+    };
 }

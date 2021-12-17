@@ -1,6 +1,6 @@
-use std::cmp::Ordering;
-use num_traits::{Bounded, Num, One, Zero};
 use bit_struct::*;
+use num_traits::{Bounded, Num, One, Zero};
+use std::cmp::Ordering;
 
 #[macro_use]
 extern crate matches;
@@ -41,7 +41,19 @@ bit_struct!(
 );
 
 #[test]
-fn test_always_valid_enum(){
+fn test_create() {
+    let mut abc = create! {
+        Abc {
+            mode: ModeA::Two,
+            count: u2!(2)
+        }
+    };
+    assert_eq!(abc.mode().get(), ModeA::Two);
+    assert_eq!(abc.count().get(), u2!(2));
+}
+
+#[test]
+fn test_always_valid_enum() {
     assert!(!<ModeA as ValidCheck<u8>>::ALWAYS_VALID);
     assert!(!<ModeA as ValidCheck<u16>>::ALWAYS_VALID);
     assert!(<OrderA as ValidCheck<u8>>::ALWAYS_VALID);
@@ -49,7 +61,7 @@ fn test_always_valid_enum(){
 }
 
 #[test]
-fn test_from(){
+fn test_from() {
     let mut bools = Bools::exact_from(u24!(0xFF_00_00));
     assert!(bools.flag_a().get());
     assert!(bools.flag_b().get());
@@ -97,14 +109,14 @@ fn test_round_trip_bytes() {
         assert_eq!(num, num_cloned);
     }
 
-    for i in 0..10{
+    for i in 0..10 {
         let res = u24::from(i).value() as u8;
         assert_eq!(i, res);
     }
 }
 
 #[test]
-fn test_invalid(){
+fn test_invalid() {
     assert!(ModeA::is_valid(0_u8));
     assert!(ModeA::is_valid(1_u8));
     assert!(ModeA::is_valid(2_u8));
@@ -172,11 +184,11 @@ fn test_enum_intos() {
 }
 
 #[test]
-fn test_ord(){
+fn test_ord() {
     for a in -0xFF..0xFF {
         for b in -0xFF..0xFF {
-            let a_i9= i9::new(a).unwrap();
-            let b_i9= i9::new(b).unwrap();
+            let a_i9 = i9::new(a).unwrap();
+            let b_i9 = i9::new(b).unwrap();
             if a < b {
                 assert!(a_i9 < b_i9);
                 assert_eq!(a_i9.cmp(&b_i9), Ordering::Less);
@@ -279,7 +291,6 @@ fn test_new_signed_types() {
     assert_eq!(i2!(0).value(), 0);
     assert_eq!(i2!(1).value(), 1);
 
-
     assert_eq!(i3!(-4).inner_raw(), 0b100);
     assert_eq!(i3!(-3).inner_raw(), 0b101);
     assert_eq!(i3!(-2).inner_raw(), 0b110);
@@ -309,29 +320,29 @@ fn test_new_signed_types() {
     assert!(i3::new(3).is_some());
     assert!(i3::new(4).is_none());
 
-    assert_eq!(i2::default().value(),0);
-    assert_eq!(i3::default().value(),0);
-    assert_eq!(i4::default().value(),0);
+    assert_eq!(i2::default().value(), 0);
+    assert_eq!(i3::default().value(), 0);
+    assert_eq!(i4::default().value(), 0);
 }
 
-fn all_i9s() -> impl Iterator<Item=i9>{
+fn all_i9s() -> impl Iterator<Item = i9> {
     (-0xFF..0xFF).filter_map(i9::new)
 }
 
-fn some_i9s() -> impl Iterator<Item=i9>{
+fn some_i9s() -> impl Iterator<Item = i9> {
     (-0xD..0xD).filter_map(i9::new)
 }
 
 #[test]
-fn test_num_trait(){
+fn test_num_trait() {
     macro_rules! eq {
-        ($a: expr, $b: expr) => {
+        ($a:expr, $b:expr) => {
             assert_eq!($a, $b.value());
         };
     }
 
     macro_rules! eq_assign {
-        ($operation: ident, $a1: expr, $b1: expr, $a2: expr, $b2: expr) => {
+        ($operation:ident, $a1:expr, $b1:expr, $a2:expr, $b2:expr) => {
             let mut temp1 = $a1;
             temp1.$operation($b1);
 
@@ -370,8 +381,7 @@ fn test_num_trait(){
         eq!(a.unwrap(), b.unwrap());
     }
 
-    for (a,b) in some_i9s().zip(some_i9s()) {
-
+    for (a, b) in some_i9s().zip(some_i9s()) {
         let actual_a = a.value();
         let actual_b = b.value();
 
@@ -379,7 +389,7 @@ fn test_num_trait(){
         eq!(actual_a + actual_b, a + b);
         eq!(actual_a * actual_b, a * b);
 
-        if !b.is_zero()  {
+        if !b.is_zero() {
             eq!(actual_a / actual_b, a / b);
             eq!(actual_a % actual_b, a % b);
         }
@@ -394,7 +404,7 @@ fn test_num_trait(){
 }
 
 #[test]
-fn test_signed_types_formatting(){
+fn test_signed_types_formatting() {
     for elem in all_i9s() {
         let actual = elem.value();
         assert_eq!(format!("{:?}", elem), format!("{:?}", actual));
