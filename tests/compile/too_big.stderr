@@ -1,3 +1,51 @@
+error[E0433]: failed to resolve: could not find `Serialize` in `serde`
+    --> src/lib.rs
+     |
+     | / macro_rules! bit_struct {
+     | |     (
+     | |         $(
+     | |         $(#[doc = $struct_doc:expr])*
+...    |
+     | |                 #[derive(bit_struct::serde::Serialize)]
+     | |                                             ^^^^^^^^^ could not find `Serialize` in `serde`
+...    |
+     | |     };
+     | | }
+     | |_- in this expansion of `bit_struct::bit_struct!`
+     |
+    ::: tests/compile/too_big.rs:1:1
+     |
+1    | / bit_struct::bit_struct! {
+2    | |     struct TooMany(u16) {
+3    | |         a: u32
+4    | |     }
+5    | | }
+     | |_- in this macro invocation
+
+error[E0433]: failed to resolve: could not find `Deserialize` in `serde`
+    --> src/lib.rs
+     |
+     | / macro_rules! bit_struct {
+     | |     (
+     | |         $(
+     | |         $(#[doc = $struct_doc:expr])*
+...    |
+     | |                 #[derive(bit_struct::serde::Deserialize)]
+     | |                                             ^^^^^^^^^^^ could not find `Deserialize` in `serde`
+...    |
+     | |     };
+     | | }
+     | |_- in this expansion of `bit_struct::bit_struct!`
+     |
+    ::: tests/compile/too_big.rs:1:1
+     |
+1    | / bit_struct::bit_struct! {
+2    | |     struct TooMany(u16) {
+3    | |         a: u32
+4    | |     }
+5    | | }
+     | |_- in this macro invocation
+
 error[E0080]: evaluation of constant value failed
     --> src/lib.rs
      |

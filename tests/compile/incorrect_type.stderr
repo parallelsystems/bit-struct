@@ -1,3 +1,51 @@
+error[E0433]: failed to resolve: could not find `Serialize` in `serde`
+    --> src/lib.rs
+     |
+     | / macro_rules! bit_struct {
+     | |     (
+     | |         $(
+     | |         $(#[doc = $struct_doc:expr])*
+...    |
+     | |                 #[derive(bit_struct::serde::Serialize)]
+     | |                                             ^^^^^^^^^ could not find `Serialize` in `serde`
+...    |
+     | |     };
+     | | }
+     | |_- in this expansion of `bit_struct::bit_struct!`
+     |
+    ::: tests/compile/incorrect_type.rs:6:1
+     |
+6    | / bit_struct::bit_struct! {
+7    | |     struct Incorrect(u16) {
+8    | |         a: EnumNoBits
+9    | |     }
+10   | | }
+     | |_- in this macro invocation
+
+error[E0433]: failed to resolve: could not find `Deserialize` in `serde`
+    --> src/lib.rs
+     |
+     | / macro_rules! bit_struct {
+     | |     (
+     | |         $(
+     | |         $(#[doc = $struct_doc:expr])*
+...    |
+     | |                 #[derive(bit_struct::serde::Deserialize)]
+     | |                                             ^^^^^^^^^^^ could not find `Deserialize` in `serde`
+...    |
+     | |     };
+     | | }
+     | |_- in this expansion of `bit_struct::bit_struct!`
+     |
+    ::: tests/compile/incorrect_type.rs:6:1
+     |
+6    | / bit_struct::bit_struct! {
+7    | |     struct Incorrect(u16) {
+8    | |         a: EnumNoBits
+9    | |     }
+10   | | }
+     | |_- in this macro invocation
+
 error[E0277]: the trait bound `EnumNoBits: ValidCheck<u16>` is not satisfied
     --> src/lib.rs
      |

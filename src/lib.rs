@@ -13,6 +13,7 @@ use core::{
 };
 
 use num_traits::{Bounded, Num, One, Zero};
+pub use serde;
 use serde::{Deserializer, Serializer};
 
 /// [UnsafeStorage] is used to mark that there are some arbitrary invariants
@@ -140,10 +141,10 @@ macro_rules! new_signed_types {
             }
         }
 
-        impl serde::Deserialize<'static> for $name {
+        impl <'de> serde::Deserialize<'de> for $name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
-                D: Deserializer<'static>,
+                D: Deserializer<'de>,
             {
                 let inner = <$signed>::deserialize(deserializer)?;
                 $name::new(inner).ok_or(serde::de::Error::custom("invalid size"))
@@ -436,10 +437,10 @@ macro_rules! new_unsigned_types {
             }
         }
 
-        impl serde::Deserialize<'static> for $name {
+        impl <'de> serde::Deserialize<'de> for $name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
-                D: Deserializer<'static>,
+                D: Deserializer<'de>,
             {
                 let inner = <$inner>::deserialize(deserializer)?;
                 $name::new(inner).ok_or(serde::de::Error::custom("invalid size"))
@@ -1024,6 +1025,39 @@ macro_rules! bit_struct {
         #[derive(Copy, Clone, PartialOrd, PartialEq, Eq, Ord, Hash)]
         pub struct $name(bit_struct::UnsafeStorage<$kind>);
 
+        impl bit_struct::serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: bit_struct::serde::Serializer {
+
+                let mut v = *self;
+                #[derive(bit_struct::serde::Serialize)]
+                struct Raw {
+                    $($field: $actual),*
+                }
+
+                let raw = Raw {
+                    $($field: v.$field().get(),)*
+                };
+
+                raw.serialize(serializer)
+            }
+        }
+
+        impl bit_struct::serde::Deserialize<'static> for $name {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: bit_struct::serde::Deserializer<'static> {
+
+                #[derive(bit_struct::serde::Deserialize)]
+                struct Raw {
+                    $($field: $actual),*
+                }
+
+                let raw = Raw::deserialize(deserializer)?;
+
+                Ok($name::new(
+                    $(raw.$field),*
+                ))
+            }
+        }
+
         impl TryFrom<$kind> for $name {
             type Error = ();
             fn try_from(elem: $kind) -> Result<$name, ()> {
@@ -1169,7 +1203,7 @@ macro_rules! enum_impl {
         #[repr(u8)]
         $(#[doc = $struct_doc])*
         $(#[derive($($struct_der),+)])?
-        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
+        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, bit_struct::serde::Serialize, bit_struct::serde::Deserialize)]
         $enum_vis enum $name {
             $(#[doc = $fst_field_doc])*
             $fst_field,
@@ -1224,7 +1258,7 @@ macro_rules! enum_impl {
         #[repr(u8)]
         $(#[doc = $struct_doc])*
         $(#[derive($($struct_der),+)])?
-        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
+        #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, bit_struct::serde::Serialize, bit_struct::serde::Deserialize)]
         $enum_vis enum $name {
             $(#[doc = $fst_field_doc])*
             $fst_field,
