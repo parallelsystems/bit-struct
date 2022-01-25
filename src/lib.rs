@@ -11,7 +11,9 @@ use core::{
         ShlAssign, Shr, ShrAssign, Sub,
     },
 };
+
 use num_traits::{Bounded, Num, One, Zero};
+use serde::{Deserializer, Serializer};
 
 /// [UnsafeStorage] is used to mark that there are some arbitrary invariants
 /// which must be maintained in storing its inner value. Therefore, creation and
@@ -128,6 +130,25 @@ macro_rules! new_signed_types {
         pub struct $name($inner);
 
         always_valid!($name);
+
+        impl serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                self.value().serialize(serializer)
+            }
+        }
+
+        impl serde::Deserialize<'static> for $name {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'static>,
+            {
+                let inner = <$signed>::deserialize(deserializer)?;
+                $name::new(inner).ok_or(serde::de::Error::custom("invalid size"))
+            }
+        }
 
         impl PartialOrd for $name {
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -403,6 +424,25 @@ macro_rules! new_unsigned_types {
         impl Display for $name {
             fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
                 f.write_fmt(format_args!("{}", self.0))
+            }
+        }
+
+        impl serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                self.value().serialize(serializer)
+            }
+        }
+
+        impl serde::Deserialize<'static> for $name {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'static>,
+            {
+                let inner = <$inner>::deserialize(deserializer)?;
+                $name::new(inner).ok_or(serde::de::Error::custom("invalid size"))
             }
         }
 
